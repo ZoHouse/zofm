@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Song, Mood, ShowState } from '@/types/radio';
 import { getRandomSong } from '@/data/songs';
 import { getPersonaForMood } from '@/data/personas';
@@ -26,8 +26,18 @@ export function useShowClock() {
     error: null,
   });
 
+  // Refs to avoid stale closures in async callbacks
+  const moodRef = useRef(show.mood);
+  const currentSongRef = useRef(show.currentSong);
+  const isPlayingRef = useRef(show.isPlaying);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playerRef = useRef<YT.Player | null>(null);
+  const stoppedRef = useRef(false);
+
+  // Keep refs in sync with state
+  useEffect(() => { moodRef.current = show.mood; }, [show.mood]);
+  useEffect(() => { currentSongRef.current = show.currentSong; }, [show.currentSong]);
+  useEffect(() => { isPlayingRef.current = show.isPlaying; }, [show.isPlaying]);
 
   const setMood = useCallback((mood: Mood) => {
     setShow(prev => ({ ...prev, mood }));
@@ -49,7 +59,18 @@ export function useShowClock() {
         djStyle: persona.style,
       }),
     });
-    const { script } = await scriptRes.json();
+
+    if (!scriptRes.ok) {
+      throw new Error(`DJ script generation failed: ${scriptRes.status}`);
+    }
+
+    const { script, error } = await scriptRes.json();
+    if (error || !script) {
+      throw new Error(error || 'Empty DJ script returned');
+    }
+
+    if (stoppedRef.current) return;
+
     setShow(prev => ({ ...prev, djScript: script, state: 'speaking' }));
 
     // Duck YouTube volume
@@ -63,10 +84,22 @@ export function useShowClock() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: script, voice: persona.voice }),
     });
+
+    if (!ttsRes.ok) {
+      throw new Error(`TTS generation failed: ${ttsRes.status}`);
+    }
+
+    if (stoppedRef.current) return;
+
     const blob = await ttsRes.blob();
     const url = URL.createObjectURL(blob);
 
     return new Promise<void>((resolve) => {
+      if (stoppedRef.current) {
+        URL.revokeObjectURL(url);
+        resolve();
+        return;
+      }
       const audio = new Audio(url);
       audioRef.current = audio;
       audio.onended = () => {
@@ -77,13 +110,17 @@ export function useShowClock() {
         URL.revokeObjectURL(url);
         resolve(); // Continue even if TTS fails
       };
-      audio.play().catch(() => resolve());
+      audio.play().catch(() => {
+        URL.revokeObjectURL(url);
+        resolve();
+      });
     });
   }, []);
 
   const startShow = useCallback(async () => {
-    const mood = show.mood;
+    const mood = moodRef.current;
     const nextSong = getRandomSong(mood);
+    stoppedRef.current = false;
 
     setShow(prev => ({
       ...prev,
@@ -96,9 +133,12 @@ export function useShowClock() {
     try {
       await generateAndSpeak(mood, null, nextSong);
 
-      // Restore volume and play song
+      if (stoppedRef.current) return;
+
+      // Restore volume and play song via loadVideoById (persistent player)
       if (playerRef.current) {
         playerRef.current.setVolume(80);
+        playerRef.current.loadVideoById(nextSong.id);
       }
       setShow(prev => ({
         ...prev,
@@ -114,11 +154,13 @@ export function useShowClock() {
         isPlaying: false,
       }));
     }
-  }, [show.mood, generateAndSpeak]);
+  }, [generateAndSpeak]);
 
   const onSongEnd = useCallback(async () => {
-    const mood = show.mood;
-    const previousSong = show.currentSong;
+    if (stoppedRef.current || !isPlayingRef.current) return;
+
+    const mood = moodRef.current;
+    const previousSong = currentSongRef.current;
     const nextSong = getRandomSong(mood, previousSong?.id);
 
     setShow(prev => ({
@@ -130,8 +172,11 @@ export function useShowClock() {
     try {
       await generateAndSpeak(mood, previousSong, nextSong);
 
+      if (stoppedRef.current) return;
+
       if (playerRef.current) {
         playerRef.current.setVolume(80);
+        playerRef.current.loadVideoById(nextSong.id);
       }
       setShow(prev => ({
         ...prev,
@@ -147,11 +192,14 @@ export function useShowClock() {
         isPlaying: false,
       }));
     }
-  }, [show.mood, show.currentSong, generateAndSpeak]);
+  }, [generateAndSpeak]);
 
   const stopShow = useCallback(() => {
+    stoppedRef.current = true;
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.src = '';
+      audioRef.current = null;
     }
     if (playerRef.current) {
       playerRef.current.stopVideo();

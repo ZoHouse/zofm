@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useShowClock } from '@/lib/useShowClock';
 import { MoodSelector } from './MoodSelector';
@@ -24,26 +25,30 @@ export function RadioPlayer() {
     playerRef,
   } = useShowClock();
 
-  const handleReady = (event: { target: YT.Player }) => {
+  // Use refs for stable callbacks passed to YouTube component
+  const onSongEndRef = useRef(onSongEnd);
+  onSongEndRef.current = onSongEnd;
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
+
+  const handleReady = useCallback((event: { target: YT.Player }) => {
     playerRef.current = event.target;
-    if (currentSong) {
-      event.target.setVolume(80);
-    }
-  };
+    event.target.setVolume(80);
+  }, [playerRef]);
 
-  const handleStateChange = (event: { data: number }) => {
+  const handleStateChange = useCallback((event: { data: number }) => {
     // YouTube.PlayerState.ENDED === 0
-    if (event.data === 0 && isPlaying) {
-      onSongEnd();
+    if (event.data === 0 && isPlayingRef.current) {
+      onSongEndRef.current();
     }
-  };
+  }, []);
 
-  const handleError = () => {
+  const handleError = useCallback(() => {
     // Skip unplayable videos
-    if (isPlaying) {
-      onSongEnd();
+    if (isPlayingRef.current) {
+      onSongEndRef.current();
     }
-  };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-900 via-black to-zinc-900 flex flex-col items-center justify-center p-8 gap-8">
@@ -91,28 +96,25 @@ export function RadioPlayer() {
         <p className="text-red-400 text-sm">{error}</p>
       )}
 
-      {/* Hidden YouTube Player */}
-      {currentSong && (
-        <div className="absolute -left-[9999px]">
-          <YouTube
-            videoId={currentSong.id}
-            opts={{
-              height: '1',
-              width: '1',
-              playerVars: {
-                autoplay: 1,
-                controls: 0,
-                disablekb: 1,
-                fs: 0,
-                modestbranding: 1,
-              },
-            }}
-            onReady={handleReady}
-            onStateChange={handleStateChange}
-            onError={handleError}
-          />
-        </div>
-      )}
+      {/* Persistent YouTube Player — always mounted, songs loaded via loadVideoById */}
+      <div className="absolute -left-[9999px]">
+        <YouTube
+          opts={{
+            height: '1',
+            width: '1',
+            playerVars: {
+              autoplay: 0,
+              controls: 0,
+              disablekb: 1,
+              fs: 0,
+              modestbranding: 1,
+            },
+          }}
+          onReady={handleReady}
+          onStateChange={handleStateChange}
+          onError={handleError}
+        />
+      </div>
     </div>
   );
 }
