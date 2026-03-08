@@ -1,10 +1,13 @@
 import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
 
-const openai = new OpenAI();
+function getClient() {
+  return new OpenAI();
+}
 
 export async function POST(req: Request) {
   try {
+    const openai = getClient();
     const { text, voice } = await req.json();
 
     if (!text) {
