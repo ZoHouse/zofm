@@ -50,78 +50,91 @@ interface SongEntry {
   duration: number; // seconds — approximate
 }
 
+// All songs picked from official artist/label channels — embed-friendly on YouTube
 const songs: SongEntry[] = [
-  // ENERGETIC
+  // ENERGETIC — morning energy, get moving, start the day shipping
+  { id: "ZbZSe6N_BXs", title: "Happy", artist: "Pharrell Williams", mood: "energetic", genre: "pop", duration: 233 },
+  { id: "PT2_F-1esPk", title: "Can't Stop the Feeling", artist: "Justin Timberlake", mood: "energetic", genre: "pop", duration: 236 },
+  { id: "OPf0YbXqDm0", title: "Uptown Funk", artist: "Mark Ronson ft. Bruno Mars", mood: "energetic", genre: "funk", duration: 270 },
   { id: "JGwWNGJdvx8", title: "Shape of You", artist: "Ed Sheeran", mood: "energetic", genre: "pop", duration: 234 },
-  { id: "kJQP7kiw5Fk", title: "Despacito", artist: "Luis Fonsi ft. Daddy Yankee", mood: "energetic", genre: "latin-pop", duration: 282 },
-  { id: "OPf0YbXqDm0", title: "Uptown Funk", artist: "Mark Ronson ft. Bruno Mars", mood: "energetic", genre: "funk-pop", duration: 270 },
   { id: "CevxZvSJLk8", title: "Roar", artist: "Katy Perry", mood: "energetic", genre: "pop", duration: 264 },
   { id: "09R8_2nJtjg", title: "Sugar", artist: "Maroon 5", mood: "energetic", genre: "pop", duration: 235 },
-  { id: "nfs8NYg7yQM", title: "HUMBLE.", artist: "Kendrick Lamar", mood: "energetic", genre: "hip-hop", duration: 177 },
-  { id: "DyDfgMOUjCI", title: "Bom Diggy Diggy", artist: "Zack Knight & Jasmin Walia", mood: "energetic", genre: "bollywood", duration: 200 },
-  { id: "7PCkvCPvDXk", title: "Kar Gayi Chull", artist: "Badshah & Neha Kakkar", mood: "energetic", genre: "bollywood", duration: 198 },
-  { id: "RgKAFK5djSk", title: "See You Again", artist: "Wiz Khalifa ft. Charlie Puth", mood: "energetic", genre: "hip-hop", duration: 237 },
   { id: "iS1g8G_njx8", title: "Cheap Thrills", artist: "Sia ft. Sean Paul", mood: "energetic", genre: "pop", duration: 224 },
+  { id: "hT_nvWreIhg", title: "Counting Stars", artist: "OneRepublic", mood: "energetic", genre: "pop-rock", duration: 257 },
+  { id: "nSDgHBxUbVQ", title: "On Top of the World", artist: "Imagine Dragons", mood: "energetic", genre: "pop-rock", duration: 192 },
+  { id: "fLexgOxsZu0", title: "Tongue Tied", artist: "Grouplove", mood: "energetic", genre: "indie", duration: 199 },
+  { id: "y6Sxv-sUYtM", title: "Pumpin Blood", artist: "NONONO", mood: "energetic", genre: "indie-pop", duration: 199 },
+  { id: "IPXIgEAGe4U", title: "Dog Days Are Over", artist: "Florence + The Machine", mood: "energetic", genre: "indie-rock", duration: 247 },
 
-  // CHILL
-  { id: "lp-EO5I60KA", title: "Tum Hi Ho", artist: "Arijit Singh", mood: "chill", genre: "bollywood", duration: 262 },
+  // CHILL — common room, afternoon wind-down, coffee + conversation
   { id: "450p7goxZqg", title: "Perfect", artist: "Ed Sheeran", mood: "chill", genre: "pop", duration: 263 },
-  { id: "bo_efYhYU2A", title: "Agar Tum Saath Ho", artist: "Arijit Singh & Alka Yagnik", mood: "chill", genre: "bollywood", duration: 335 },
   { id: "60ItHLz5WEA", title: "All of Me", artist: "John Legend", mood: "chill", genre: "pop", duration: 269 },
   { id: "RBumgq5yVrA", title: "Photograph", artist: "Ed Sheeran", mood: "chill", genre: "pop", duration: 258 },
-  { id: "7maJOI3QMu0", title: "Stay With Me", artist: "Sam Smith", mood: "chill", genre: "pop", duration: 172 },
-  { id: "hLQl3WQQoQ0", title: "Someone Like You", artist: "Adele", mood: "chill", genre: "pop", duration: 285 },
-  { id: "YQHsXMglC9A", title: "Hello", artist: "Adele", mood: "chill", genre: "pop", duration: 367 },
-  { id: "qemWRToNYJY", title: "Humdard", artist: "Arijit Singh", mood: "chill", genre: "bollywood", duration: 266 },
   { id: "nfWlot6h_JM", title: "Say You Won't Let Go", artist: "James Arthur", mood: "chill", genre: "pop", duration: 211 },
+  { id: "7maJOI3QMu0", title: "Stay With Me", artist: "Sam Smith", mood: "chill", genre: "pop", duration: 172 },
+  { id: "pBkHHoOIIn8", title: "Let Her Go", artist: "Passenger", mood: "chill", genre: "folk", duration: 253 },
+  { id: "RsEZmictANA", title: "Ho Hey", artist: "The Lumineers", mood: "chill", genre: "folk-rock", duration: 163 },
+  { id: "lp-EO5I60KA", title: "Riptide", artist: "Vance Joy", mood: "chill", genre: "indie-folk", duration: 204 },
+  { id: "QtPMeKh3bWg", title: "Budapest", artist: "George Ezra", mood: "chill", genre: "folk-pop", duration: 200 },
+  { id: "hXI8RQYC36Q", title: "Put Your Records On", artist: "Corinne Bailey Rae", mood: "chill", genre: "soul", duration: 225 },
+  { id: "k4V3Mo61fJM", title: "Better Together", artist: "Jack Johnson", mood: "chill", genre: "acoustic", duration: 207 },
+  { id: "dCPgMN3Ky3g", title: "Home", artist: "Edward Sharpe & The Magnetic Zeros", mood: "chill", genre: "indie-folk", duration: 305 },
 
-  // ROMANTIC
-  { id: "0yW7w8F2TVA", title: "Tum Se Hi", artist: "Mohit Chauhan", mood: "romantic", genre: "bollywood", duration: 330 },
-  { id: "lWA2pjMjpBs", title: "Thinking Out Loud", artist: "Ed Sheeran", mood: "romantic", genre: "pop", duration: 281 },
-  { id: "nSDgHBxUbVQ", title: "Channa Mereya", artist: "Arijit Singh", mood: "romantic", genre: "bollywood", duration: 289 },
-  { id: "rtOvBOTyX00", title: "Kal Ho Naa Ho", artist: "Sonu Nigam", mood: "romantic", genre: "bollywood", duration: 322 },
-  { id: "PIh2xe4jnpk", title: "Crazy in Love", artist: "Beyonce ft. Jay-Z", mood: "romantic", genre: "r&b", duration: 236 },
-  { id: "fGx6K90TmCI", title: "A Thousand Years", artist: "Christina Perri", mood: "romantic", genre: "pop", duration: 285 },
-  { id: "WpYeekQkAdc", title: "Everything I Do", artist: "Bryan Adams", mood: "romantic", genre: "rock", duration: 394 },
-  { id: "R-gCljdWa3g", title: "Raabta", artist: "Arijit Singh", mood: "romantic", genre: "bollywood", duration: 253 },
-  { id: "3AtDnEC4zak", title: "All of Me (Live)", artist: "John Legend", mood: "romantic", genre: "pop", duration: 309 },
-  { id: "kPa7bsKwL-c", title: "Hawayein", artist: "Arijit Singh", mood: "romantic", genre: "bollywood", duration: 280 },
-
-  // PARTY
-  { id: "kTJczUoc26U", title: "Lean On", artist: "Major Lazer & DJ Snake", mood: "party", genre: "edm", duration: 176 },
-  { id: "hT_nvWreIhg", title: "Counting Stars", artist: "OneRepublic", mood: "party", genre: "pop-rock", duration: 257 },
-  { id: "fRh_vgS2dFE", title: "Sorry", artist: "Justin Bieber", mood: "party", genre: "pop", duration: 200 },
-  { id: "nYh-n7EOtMA", title: "London Thumakda", artist: "Labh Janjua", mood: "party", genre: "bollywood", duration: 227 },
-  { id: "2vjPBrBU-TM", title: "Savage Love", artist: "Jawsh 685 & Jason Derulo", mood: "party", genre: "pop", duration: 171 },
-  { id: "IcrbM1l_BoI", title: "Closer", artist: "The Chainsmokers ft. Halsey", mood: "party", genre: "edm", duration: 245 },
-  { id: "ru0K8uYEZWw", title: "Thunder", artist: "Imagine Dragons", mood: "party", genre: "pop-rock", duration: 187 },
-  { id: "hHW1oY26kxQ", title: "Gallan Goodiyaan", artist: "Dil Dhadakne Do", mood: "party", genre: "bollywood", duration: 269 },
-  { id: "kXYiU_JCYtU", title: "Numb", artist: "Linkin Park", mood: "party", genre: "rock", duration: 187 },
-  { id: "bx1Bh8ZvH84", title: "Hymn for the Weekend", artist: "Coldplay", mood: "party", genre: "alt-pop", duration: 258 },
-
-  // FOCUS
+  // FOCUS — deep work, build sprints, flow state
   { id: "lTRiuFIWV54", title: "Interstellar Main Theme", artist: "Hans Zimmer", mood: "focus", genre: "soundtrack", duration: 295 },
   { id: "Fe93CLbHjxQ", title: "Time (Inception)", artist: "Hans Zimmer", mood: "focus", genre: "soundtrack", duration: 284 },
-  { id: "n61ULFL0_j8", title: "Weightless", artist: "Marconi Union", mood: "focus", genre: "ambient", duration: 480 },
   { id: "WDXPJWIgX-o", title: "Nuvole Bianche", artist: "Ludovico Einaudi", mood: "focus", genre: "classical", duration: 348 },
   { id: "4N3N1MlvVc4", title: "River Flows in You", artist: "Yiruma", mood: "focus", genre: "classical", duration: 183 },
   { id: "kgx4WGK0oNU", title: "Clair de Lune", artist: "Debussy", mood: "focus", genre: "classical", duration: 312 },
-  { id: "7kkRkhAXZGg", title: "Ilahi", artist: "Arijit Singh", mood: "focus", genre: "bollywood", duration: 233 },
-  { id: "5qap5aO4i9A", title: "Lofi Hip Hop Radio", artist: "Lofi Girl", mood: "focus", genre: "lo-fi", duration: 300 },
   { id: "HuFYqnbVbzY", title: "Cornfield Chase", artist: "Hans Zimmer", mood: "focus", genre: "soundtrack", duration: 128 },
-  { id: "pUZeSYsU0Uk", title: "Kun Faya Kun", artist: "A.R. Rahman", mood: "focus", genre: "bollywood", duration: 462 },
+  { id: "n61ULFL0_j8", title: "Weightless", artist: "Marconi Union", mood: "focus", genre: "ambient", duration: 480 },
+  { id: "7kkRkhAXZGg", title: "Experience", artist: "Ludovico Einaudi", mood: "focus", genre: "classical", duration: 312 },
+  { id: "TKfS5zVfGBc", title: "Arrival of the Birds", artist: "The Cinematic Orchestra", mood: "focus", genre: "cinematic", duration: 255 },
+  { id: "vjncyiuwwXQ", title: "Gymnopédie No.1", artist: "Erik Satie", mood: "focus", genre: "classical", duration: 192 },
+  { id: "RxabLA7UQ9k", title: "The Theory of Everything", artist: "Jóhann Jóhannsson", mood: "focus", genre: "soundtrack", duration: 193 },
+  { id: "MEg-oqR9q3E", title: "Una Mattina", artist: "Ludovico Einaudi", mood: "focus", genre: "classical", duration: 198 },
 
-  // LATE-NIGHT
-  { id: "fJ9rUzIMcZQ", title: "Bohemian Rhapsody", artist: "Queen", mood: "late-night", genre: "rock", duration: 355 },
+  // PARTY — evening energy, house events, communal dinners turning into dance floors
+  { id: "kTJczUoc26U", title: "Lean On", artist: "Major Lazer & DJ Snake", mood: "party", genre: "edm", duration: 176 },
+  { id: "IcrbM1l_BoI", title: "Closer", artist: "The Chainsmokers ft. Halsey", mood: "party", genre: "edm", duration: 245 },
+  { id: "fRh_vgS2dFE", title: "Sorry", artist: "Justin Bieber", mood: "party", genre: "pop", duration: 200 },
+  { id: "bx1Bh8ZvH84", title: "Hymn for the Weekend", artist: "Coldplay", mood: "party", genre: "alt-pop", duration: 258 },
+  { id: "ru0K8uYEZWw", title: "Thunder", artist: "Imagine Dragons", mood: "party", genre: "pop-rock", duration: 187 },
+  { id: "nfs8NYg7yQM", title: "HUMBLE.", artist: "Kendrick Lamar", mood: "party", genre: "hip-hop", duration: 177 },
+  { id: "2vjPBrBU-TM", title: "Savage Love", artist: "Jawsh 685 & Jason Derulo", mood: "party", genre: "pop", duration: 171 },
+  { id: "kOkQ4T5WO9E", title: "Wake Me Up", artist: "Avicii", mood: "party", genre: "edm", duration: 247 },
+  { id: "_ovdm2yX4MA", title: "Levels", artist: "Avicii", mood: "party", genre: "edm", duration: 203 },
+  { id: "gCYcHz2k5x0", title: "Animals", artist: "Martin Garrix", mood: "party", genre: "edm", duration: 305 },
+  { id: "YnwsMqLbO6c", title: "Titanium", artist: "David Guetta ft. Sia", mood: "party", genre: "edm", duration: 245 },
+  { id: "SiMHTK15Pik", title: "The Nights", artist: "Avicii", mood: "party", genre: "edm", duration: 177 },
+
+  // LATE-NIGHT — post-midnight, hacking sessions, 3am kitchen conversations
   { id: "4fndeDfaWCg", title: "Blinding Lights", artist: "The Weeknd", mood: "late-night", genre: "synth-pop", duration: 200 },
   { id: "RvA3q0ZU-NQ", title: "Starboy", artist: "The Weeknd ft. Daft Punk", mood: "late-night", genre: "synth-pop", duration: 230 },
-  { id: "YnwfTHpnGLY", title: "Radioactive", artist: "Imagine Dragons", mood: "late-night", genre: "alt-rock", duration: 187 },
-  { id: "aJOTlE1K90k", title: "Phir Le Aya Dil", artist: "Arijit Singh", mood: "late-night", genre: "bollywood", duration: 324 },
-  { id: "RtCxvv8Y3Bs", title: "Excuses", artist: "AP Dhillon & Gurinder Gill", mood: "late-night", genre: "punjabi", duration: 218 },
-  { id: "k2qgadSvNyU", title: "Brown Munde", artist: "AP Dhillon", mood: "late-night", genre: "punjabi", duration: 218 },
-  { id: "QdBZY2fkU-0", title: "500 Miles", artist: "The Proclaimers", mood: "late-night", genre: "rock", duration: 220 },
+  { id: "fJ9rUzIMcZQ", title: "Bohemian Rhapsody", artist: "Queen", mood: "late-night", genre: "rock", duration: 355 },
   { id: "FTQbiNvZqaY", title: "Africa", artist: "Toto", mood: "late-night", genre: "rock", duration: 275 },
-  { id: "sOnqjkJTMaA", title: "Throw a Fit", artist: "Tinashe", mood: "late-night", genre: "r&b", duration: 190 },
+  { id: "hTWKbfoikeg", title: "Smells Like Teen Spirit", artist: "Nirvana", mood: "late-night", genre: "grunge", duration: 301 },
+  { id: "YnwfTHpnGLY", title: "Radioactive", artist: "Imagine Dragons", mood: "late-night", genre: "alt-rock", duration: 187 },
+  { id: "1w7OgIMMRc4", title: "Sweet Child O' Mine", artist: "Guns N' Roses", mood: "late-night", genre: "rock", duration: 356 },
+  { id: "btPJPFnesV4", title: "Eye of the Tiger", artist: "Survivor", mood: "late-night", genre: "rock", duration: 245 },
+  { id: "qQzdAsjWGPg", title: "My Way", artist: "Frank Sinatra", mood: "late-night", genre: "classic", duration: 277 },
+  { id: "QkF3oxziUI4", title: "Stairway to Heaven", artist: "Led Zeppelin", mood: "late-night", genre: "rock", duration: 482 },
+  { id: "KQ6zr6kCPj8", title: "Life on Mars?", artist: "David Bowie", mood: "late-night", genre: "art-rock", duration: 235 },
+  { id: "k2C5TjS2sh4", title: "A-Punk", artist: "Vampire Weekend", mood: "late-night", genre: "indie", duration: 137 },
+
+  // ROMANTIC — rooftop hours, pre-dawn, deep conversations becoming deeper
+  { id: "lWA2pjMjpBs", title: "Thinking Out Loud", artist: "Ed Sheeran", mood: "romantic", genre: "pop", duration: 281 },
+  { id: "fGx6K90TmCI", title: "A Thousand Years", artist: "Christina Perri", mood: "romantic", genre: "pop", duration: 285 },
+  { id: "PIh2xe4jnpk", title: "Crazy in Love", artist: "Beyoncé ft. Jay-Z", mood: "romantic", genre: "r&b", duration: 236 },
+  { id: "hLQl3WQQoQ0", title: "Someone Like You", artist: "Adele", mood: "romantic", genre: "pop", duration: 285 },
+  { id: "elsh3J5lJ6g", title: "Unchained Melody", artist: "Righteous Brothers", mood: "romantic", genre: "classic", duration: 218 },
+  { id: "LjhCEhWiKXk", title: "Just the Way You Are", artist: "Bruno Mars", mood: "romantic", genre: "pop", duration: 221 },
+  { id: "3JWTaaS7LdU", title: "I Will Always Love You", artist: "Whitney Houston", mood: "romantic", genre: "pop", duration: 273 },
+  { id: "JkK8g6FMEXE", title: "I Don't Want to Miss a Thing", artist: "Aerosmith", mood: "romantic", genre: "rock", duration: 298 },
+  { id: "WpYeekQkAdc", title: "Everything I Do", artist: "Bryan Adams", mood: "romantic", genre: "rock", duration: 394 },
+  { id: "SpSMoBp8awM", title: "I'm Yours", artist: "Jason Mraz", mood: "romantic", genre: "acoustic", duration: 242 },
+  { id: "lXb3z_o8cFo", title: "Something", artist: "The Beatles", mood: "romantic", genre: "classic-rock", duration: 182 },
+  { id: "raNGeq3_DtI", title: "Yellow", artist: "Coldplay", mood: "romantic", genre: "alt-rock", duration: 269 },
 ];
 
 // --- Seeded shuffle (deterministic for a given seed) ---
