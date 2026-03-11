@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { getRecentPlays, saveDJMemory, getDJMemories, getPlayStats } from '@/lib/db';
 
 function getClient() {
   return new OpenAI();
@@ -131,6 +132,26 @@ export async function POST(req: Request) {
       .replace(/\{previousSong\}/g, previousSong?.title || '')
       .replace(/\{show\}/g, djName || 'Zo FM');
 
+    // Build Suki's memory context
+    let memoryContext = '';
+    try {
+      const recentPlays = getRecentPlays(5);
+      const stats = getPlayStats();
+      const recentThoughts = getDJMemories('reaction', 3);
+
+      if (recentPlays.length > 0) {
+        const recentList = recentPlays.map(p => `"${p.title}" by ${p.artist}`).join(', ');
+        memoryContext += `\nRECENT PLAYS (last ${recentPlays.length}): ${recentList}`;
+      }
+      if (stats.total_plays > 0) {
+        memoryContext += `\nSTATION STATS: ${stats.total_plays} songs played, ${stats.unique_songs} unique tracks.`;
+        if (stats.top_song) memoryContext += ` Most played: "${stats.top_song}" by ${stats.top_artist}.`;
+      }
+      if (recentThoughts.length > 0) {
+        memoryContext += `\nYOUR RECENT THOUGHTS: ${recentThoughts.map(t => t.content).join(' | ')}`;
+      }
+    } catch { /* non-critical */ }
+
     // For hard cuts, use lower max_tokens to keep it tight
     const maxTokens = transitionType === 'hard-cut' ? 30 : 100;
 
@@ -141,7 +162,7 @@ export async function POST(req: Request) {
       messages: [
         {
           role: 'system',
-          content: `${ZO_CONTEXT}\n\nCurrent show: ${djStyle}\nYour name: ${djName || 'Suki'}\nCurrent mood: ${mood}\nTransition type: ${transitionType}`,
+          content: `${ZO_CONTEXT}\n\nCurrent show: ${djStyle}\nYour name: ${djName || 'Suki'}\nCurrent mood: ${mood}\nTransition type: ${transitionType}${memoryContext}`,
         },
         {
           role: 'user',
@@ -156,6 +177,11 @@ export async function POST(req: Request) {
     script = script.replace(/^["']|["']$/g, '').trim();
     // Safety: strip any playlist references that slipped through
     script = script.replace(/Zo House Playlist/gi, '').replace(/\s{2,}/g, ' ').trim();
+
+    // Save Suki's script as a memory (non-critical)
+    try {
+      saveDJMemory('reaction', script, nextSong.id || undefined, djName, mood);
+    } catch { /* non-critical */ }
 
     return NextResponse.json({ script, transitionType });
   } catch (err) {

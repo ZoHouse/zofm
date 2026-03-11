@@ -319,7 +319,7 @@ html, body {
 
 .freq-inside {
   position: absolute;
-  bottom: 14%;
+  bottom: 18%;
   left: 50%;
   transform: translateX(-50%);
   text-align: center;
@@ -330,7 +330,7 @@ html, body {
 .freq-number {
   font-family: 'Outfit', sans-serif;
   font-weight: 200;
-  font-size: clamp(28px, 6.5vw, 52px);
+  font-size: clamp(24px, 5.5vw, 44px);
   letter-spacing: -0.03em;
   line-height: 1;
   background: linear-gradient(
@@ -349,7 +349,6 @@ html, body {
 
 .freq-number .decimal {
   font-weight: 200;
-  opacity: 0.5;
 }
 
 .freq-unit {
