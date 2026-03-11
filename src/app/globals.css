@@ -3,15 +3,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@200;300;400;600;800&display=swap');
 
 :root {
-  --dial-size: min(75vw, 75vh, 480px);
+  --dial-size: min(70vw, 70vh, 440px);
   --accent: #a78bfa;
-  --accent-dim: rgba(167, 139, 250, 0.15);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
-  background: #050505;
+  background: #080808;
   color: #fff;
   overflow: hidden;
   height: 100%;
@@ -20,7 +19,9 @@ html, body {
   user-select: none;
 }
 
-/* --- Radial dial background --- */
+/* ============================================
+   CHROME DIAL — premium brushed metal radio
+   ============================================ */
 
 .dial {
   width: var(--dial-size);
@@ -34,23 +35,85 @@ html, body {
 .dial:hover { transform: scale(1.01); }
 .dial:active { transform: scale(0.99); }
 
-.dial-ring {
+/* Outer chrome bezel */
+.dial-bezel {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.04);
-  background: radial-gradient(circle at center, #0a0a0a 0%, #050505 70%);
+  background:
+    conic-gradient(
+      from 0deg,
+      #4a4a4a 0deg,
+      #7a7a7a 30deg,
+      #b0b0b0 60deg,
+      #d4d4d4 90deg,
+      #e8e8e8 120deg,
+      #d4d4d4 150deg,
+      #a0a0a0 180deg,
+      #6a6a6a 210deg,
+      #4a4a4a 240deg,
+      #6a6a6a 270deg,
+      #9a9a9a 300deg,
+      #b8b8b8 330deg,
+      #4a4a4a 360deg
+    );
   box-shadow:
-    0 0 0 1px rgba(255,255,255,0.03),
-    0 0 80px rgba(0,0,0,0.6),
-    inset 0 0 60px rgba(0,0,0,0.4);
+    0 2px 4px rgba(0,0,0,0.6),
+    0 8px 24px rgba(0,0,0,0.5),
+    0 20px 60px rgba(0,0,0,0.4),
+    0 0 0 1px rgba(255,255,255,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.25),
+    inset 0 -1px 0 rgba(0,0,0,0.3);
+}
+
+/* Inner dark face */
+.dial-face {
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 40% 35%, #1a1a1a 0%, #0e0e0e 40%, #080808 80%);
+  box-shadow:
+    inset 0 2px 8px rgba(0,0,0,0.8),
+    inset 0 0 30px rgba(0,0,0,0.5),
+    0 0 0 1px rgba(255,255,255,0.04);
+}
+
+/* Brushed metal texture on bezel */
+.dial-bezel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-linear-gradient(
+    115deg,
+    transparent 0px,
+    rgba(255,255,255,0.03) 1px,
+    transparent 2px,
+    transparent 4px
+  );
+  mix-blend-mode: overlay;
+}
+
+/* Bezel highlight rim */
+.dial-bezel::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: linear-gradient(160deg, rgba(255,255,255,0.2) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.05) 100%) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
 }
 
 /* Tick marks around the dial */
 .dial-ticks {
   position: absolute;
-  inset: 0;
+  inset: 6%;
   border-radius: 50%;
+  z-index: 1;
 }
 
 .tick {
@@ -67,35 +130,37 @@ html, body {
   content: '';
   display: block;
   width: 1px;
-  background: rgba(255,255,255,0.08);
-  height: 12px;
-  margin: 0 auto;
+  background: rgba(255,255,255,0.1);
+  height: 10px;
+  margin: 6px auto 0;
 }
 
 .tick.major::before {
-  height: 20px;
-  background: rgba(255,255,255,0.15);
+  height: 16px;
+  background: rgba(255,255,255,0.25);
   width: 1.5px;
+  box-shadow: 0 0 3px rgba(255,255,255,0.05);
 }
 
 .tick-label {
   position: absolute;
-  top: 26px;
+  top: 28px;
   left: 50%;
   transform: translateX(-50%);
   font-family: 'Space Mono', monospace;
-  font-size: clamp(7px, 1vw, 9px);
-  color: rgba(255,255,255,0.12);
+  font-size: clamp(7px, 0.9vw, 9px);
+  color: rgba(255,255,255,0.15);
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
 
-/* Accent arc — the purple sweep on the dial */
+/* Purple arc indicator */
 .dial-arc {
   position: absolute;
-  inset: 3px;
+  inset: 6%;
   border-radius: 50%;
   pointer-events: none;
+  z-index: 1;
   opacity: 0;
   transition: opacity 0.8s ease;
 }
@@ -104,8 +169,16 @@ html, body {
   opacity: 1;
 }
 
-/* Needle indicator at the tuned frequency position */
+/* Needle */
 .dial-needle {
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.dial-needle-arm {
   position: absolute;
   top: 0;
   left: 50%;
@@ -113,31 +186,144 @@ html, body {
   height: 50%;
   transform-origin: bottom center;
   transform: rotate(-18deg);
-  pointer-events: none;
 }
 
-.dial-needle::before {
+.dial-needle-arm::before {
   content: '';
   display: block;
   width: 2px;
-  height: 28px;
+  height: 24px;
+  margin: 8px auto 0;
   background: var(--accent);
   border-radius: 1px;
-  box-shadow: 0 0 8px var(--accent), 0 0 20px rgba(167, 139, 250, 0.3);
-  margin: 0 auto;
+  box-shadow: 0 0 6px var(--accent), 0 0 16px rgba(167, 139, 250, 0.3);
 }
 
 @keyframes needle-vibrate {
   0%, 100% { transform: rotate(-18deg); }
-  25% { transform: rotate(-18.3deg); }
-  75% { transform: rotate(-17.7deg); }
+  25% { transform: rotate(-18.2deg); }
+  75% { transform: rotate(-17.8deg); }
 }
 
-.dial-needle.playing {
-  animation: needle-vibrate 0.15s ease-in-out infinite;
+.dial-needle-arm.playing {
+  animation: needle-vibrate 0.12s ease-in-out infinite;
 }
 
-/* --- Center frequency display --- */
+/* --- Center knob — 3D premium chrome --- */
+
+.knob-outer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36%;
+  height: 36%;
+  border-radius: 50%;
+  z-index: 3;
+  /* Chrome ring around knob */
+  background:
+    conic-gradient(
+      from 180deg,
+      #555 0deg,
+      #999 60deg,
+      #ccc 90deg,
+      #eee 120deg,
+      #ccc 150deg,
+      #888 210deg,
+      #555 270deg,
+      #777 300deg,
+      #aaa 330deg,
+      #555 360deg
+    );
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.6),
+    0 4px 16px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.3),
+    inset 0 -1px 0 rgba(0,0,0,0.2);
+}
+
+/* Brushed texture on knob ring */
+.knob-outer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255,255,255,0.02) 2deg,
+    transparent 4deg
+  );
+}
+
+.knob-face {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 40% 35%,
+      #2a2a2a 0%,
+      #1a1a1a 30%,
+      #111 60%,
+      #0d0d0d 100%
+    );
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.6),
+    inset 0 -1px 3px rgba(255,255,255,0.03),
+    0 0 0 1px rgba(255,255,255,0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+/* Knob highlight — top light catch */
+.knob-face::before {
+  content: '';
+  position: absolute;
+  top: 8%;
+  left: 20%;
+  width: 60%;
+  height: 30%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Knob notch indicator */
+.knob-face::after {
+  content: '';
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 10%;
+  background: rgba(255,255,255,0.12);
+  border-radius: 1px;
+}
+
+.knob-label {
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: calc(var(--dial-size) * 0.042);
+  letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.6);
+  line-height: 1;
+  margin-top: 6%;
+}
+
+.knob-sub {
+  font-family: 'Space Mono', monospace;
+  font-weight: 400;
+  font-size: calc(var(--dial-size) * 0.022);
+  letter-spacing: 0.3em;
+  color: rgba(255,255,255,0.2);
+  text-transform: uppercase;
+}
+
+/* --- Frequency display below knob --- */
 
 .freq-display {
   position: absolute;
@@ -145,45 +331,57 @@ html, body {
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  z-index: 2;
+  z-index: 4;
+  pointer-events: none;
 }
 
 .freq-number {
   font-family: 'Outfit', sans-serif;
   font-weight: 200;
-  font-size: clamp(48px, 10vw, 86px);
-  color: rgba(255,255,255,0.85);
+  font-size: clamp(42px, 9vw, 76px);
   letter-spacing: -0.03em;
   line-height: 1;
-  transition: color 0.6s ease;
+  /* Chrome text effect */
+  background: linear-gradient(
+    180deg,
+    #e8e8e8 0%,
+    #b0b0b0 40%,
+    #888 60%,
+    #aaa 80%,
+    #ccc 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
 }
 
 .freq-number .decimal {
   font-weight: 200;
-  color: rgba(255,255,255,0.4);
+  opacity: 0.5;
 }
 
 .freq-unit {
   font-family: 'Space Mono', monospace;
   font-weight: 400;
-  font-size: clamp(9px, 1.2vw, 12px);
-  color: rgba(255,255,255,0.15);
+  font-size: clamp(9px, 1.2vw, 11px);
+  color: rgba(255,255,255,0.12);
   letter-spacing: 0.4em;
   text-transform: uppercase;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .freq-channel {
   font-family: 'Space Mono', monospace;
   font-weight: 700;
-  font-size: clamp(10px, 1.3vw, 13px);
+  font-size: clamp(10px, 1.3vw, 12px);
   color: var(--accent);
   letter-spacing: 0.15em;
-  margin-top: 16px;
-  opacity: 0.7;
+  margin-top: 14px;
+  opacity: 0.6;
 }
 
-/* --- Song info below dial --- */
+/* --- Song info --- */
 
 .song-info {
   position: absolute;
@@ -203,7 +401,7 @@ html, body {
   font-family: 'Outfit', sans-serif;
   font-weight: 400;
   font-size: clamp(13px, 1.8vw, 16px);
-  color: rgba(255,255,255,0.5);
+  color: rgba(255,255,255,0.45);
   letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
@@ -214,48 +412,10 @@ html, body {
   font-family: 'Outfit', sans-serif;
   font-weight: 300;
   font-size: clamp(10px, 1.3vw, 12px);
-  color: rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.15);
   letter-spacing: 0.1em;
   margin-top: 4px;
   text-transform: uppercase;
-}
-
-/* --- Slot / DJ info --- */
-
-.slot-badge {
-  position: absolute;
-  top: max(4vh, 24px);
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  opacity: 0;
-  transition: opacity 0.6s ease;
-}
-
-.slot-badge.visible { opacity: 1; }
-
-.slot-name {
-  font-family: 'Space Mono', monospace;
-  font-weight: 400;
-  font-size: clamp(9px, 1.1vw, 11px);
-  color: rgba(255,255,255,0.15);
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
-}
-
-.live-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #e34;
-  animation: pulse-dot 2s ease-in-out infinite;
 }
 
 /* --- DJ Script overlay --- */
@@ -270,7 +430,7 @@ html, body {
   font-family: 'Outfit', sans-serif;
   font-weight: 300;
   font-size: clamp(12px, 1.4vw, 14px);
-  color: rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.25);
   line-height: 1.7;
   font-style: italic;
   letter-spacing: 0.01em;
@@ -284,8 +444,8 @@ html, body {
 /* --- Tune in prompt --- */
 
 @keyframes breathe {
-  0%, 100% { opacity: 0.15; }
-  50% { opacity: 0.35; }
+  0%, 100% { opacity: 0.12; }
+  50% { opacity: 0.3; }
 }
 
 .tune-prompt {
@@ -317,12 +477,12 @@ html, body {
   text-align: center;
 }
 
-/* Subtle grain texture overlay */
+/* Film grain */
 .grain {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: 0.03;
+  opacity: 0.025;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   background-repeat: repeat;
   z-index: 100;
