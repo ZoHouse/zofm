@@ -68,15 +68,10 @@ export function RadioPlayer() {
         />
       </div>
 
-      {/* Top: slot name or DJ script */}
-      {isDJSpeaking ? (
+      {/* Top: DJ script only when speaking */}
+      {isDJSpeaking && (
         <div className={`dj-overlay ${djScript ? 'visible' : ''}`}>
           &ldquo;{djScript}&rdquo;
-        </div>
-      ) : (
-        <div className={`slot-badge ${tunedIn && slot ? 'visible' : ''}`}>
-          <span className="live-dot" />
-          <span className="slot-name">{slot?.name}</span>
         </div>
       )}
 
