@@ -108,19 +108,21 @@ export function RadioPlayer() {
         <div className="knob-outer">
           <div className="knob-face">
             <span className="knob-label">ZO</span>
-            <span className="knob-sub">fm</span>
           </div>
+        </div>
+
+        {/* 86.13 inside the dial, below the knob */}
+        <div className="freq-inside">
+          <div className="freq-number">
+            86<span className="decimal">.13</span>
+          </div>
+          <div className="freq-unit">kHz</div>
         </div>
 
       </div>
 
-      {/* Frequency + song info below dial */}
+      {/* Song info / tune-in below dial */}
       <div className="below-dial">
-        <div className="freq-number">
-          86<span className="decimal">.13</span>
-        </div>
-        <div className="freq-unit">kHz</div>
-
         {!tunedIn ? (
           <div className="tune-prompt-inline">tune in</div>
         ) : error ? (

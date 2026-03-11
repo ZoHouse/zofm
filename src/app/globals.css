@@ -315,27 +315,22 @@ html, body {
   margin-top: 6%;
 }
 
-.knob-sub {
-  font-family: 'Space Mono', monospace;
-  font-weight: 400;
-  font-size: calc(var(--dial-size) * 0.022);
-  letter-spacing: 0.3em;
-  color: rgba(255,255,255,0.2);
-  text-transform: uppercase;
-}
+/* --- Frequency inside the dial face --- */
 
-/* --- Below dial: frequency + song info --- */
-
-.below-dial {
+.freq-inside {
+  position: absolute;
+  bottom: 14%;
+  left: 50%;
+  transform: translateX(-50%);
   text-align: center;
-  margin-top: 24px;
+  z-index: 4;
   pointer-events: none;
 }
 
 .freq-number {
   font-family: 'Outfit', sans-serif;
   font-weight: 200;
-  font-size: clamp(36px, 8vw, 64px);
+  font-size: clamp(28px, 6.5vw, 52px);
   letter-spacing: -0.03em;
   line-height: 1;
   background: linear-gradient(
@@ -360,11 +355,19 @@ html, body {
 .freq-unit {
   font-family: 'Space Mono', monospace;
   font-weight: 400;
-  font-size: clamp(9px, 1.2vw, 11px);
-  color: rgba(255,255,255,0.12);
+  font-size: clamp(8px, 1vw, 10px);
+  color: rgba(255,255,255,0.1);
   letter-spacing: 0.4em;
   text-transform: uppercase;
   margin-top: 4px;
+}
+
+/* --- Below dial: song info only --- */
+
+.below-dial {
+  text-align: center;
+  margin-top: 20px;
+  pointer-events: none;
 }
 
 .song-info-inline {
