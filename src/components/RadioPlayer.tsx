@@ -104,30 +104,6 @@ export function RadioPlayer() {
           ))}
         </div>
 
-        {/* Purple arc */}
-        <svg
-          className={`dial-arc ${tunedIn ? 'visible' : ''}`}
-          viewBox="0 0 100 100"
-        >
-          <defs>
-            <linearGradient id="arc-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="rgba(167,139,250,0)" />
-              <stop offset="40%" stopColor="rgba(167,139,250,0.2)" />
-              <stop offset="60%" stopColor="rgba(167,139,250,0.35)" />
-              <stop offset="100%" stopColor="rgba(167,139,250,0.05)" />
-            </linearGradient>
-          </defs>
-          <circle
-            cx="50" cy="50" r="46"
-            fill="none"
-            stroke="url(#arc-grad)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeDasharray="40 250"
-            strokeDashoffset="115"
-          />
-        </svg>
-
         {/* Needle */}
         <div className="dial-needle">
           <div className={`dial-needle-arm ${isPlaying ? 'playing' : ''}`} />
