@@ -178,6 +178,7 @@ html, body {
   z-index: 2;
 }
 
+/* Needle at 86.13: -130 + (6.13/28)*260 = -73.1deg */
 .dial-needle-arm {
   position: absolute;
   top: 0;
@@ -185,7 +186,7 @@ html, body {
   width: 2px;
   height: 50%;
   transform-origin: bottom center;
-  transform: rotate(-18deg);
+  transform: rotate(-73deg);
 }
 
 .dial-needle-arm::before {
@@ -200,9 +201,9 @@ html, body {
 }
 
 @keyframes needle-vibrate {
-  0%, 100% { transform: rotate(-18deg); }
-  25% { transform: rotate(-18.2deg); }
-  75% { transform: rotate(-17.8deg); }
+  0%, 100% { transform: rotate(-73deg); }
+  25% { transform: rotate(-73.3deg); }
+  75% { transform: rotate(-72.7deg); }
 }
 
 .dial-needle-arm.playing {
@@ -323,25 +324,20 @@ html, body {
   text-transform: uppercase;
 }
 
-/* --- Frequency display below knob --- */
+/* --- Below dial: frequency + song info --- */
 
-.freq-display {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+.below-dial {
   text-align: center;
-  z-index: 4;
+  margin-top: 24px;
   pointer-events: none;
 }
 
 .freq-number {
   font-family: 'Outfit', sans-serif;
   font-weight: 200;
-  font-size: clamp(42px, 9vw, 76px);
+  font-size: clamp(36px, 8vw, 64px);
   letter-spacing: -0.03em;
   line-height: 1;
-  /* Chrome text effect */
   background: linear-gradient(
     180deg,
     #e8e8e8 0%,
@@ -368,34 +364,16 @@ html, body {
   color: rgba(255,255,255,0.12);
   letter-spacing: 0.4em;
   text-transform: uppercase;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
-.freq-channel {
-  font-family: 'Space Mono', monospace;
-  font-weight: 700;
-  font-size: clamp(10px, 1.3vw, 12px);
-  color: var(--accent);
-  letter-spacing: 0.15em;
-  margin-top: 14px;
-  opacity: 0.6;
-}
-
-/* --- Song info --- */
-
-.song-info {
-  position: absolute;
-  bottom: max(4vh, 24px);
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
+.song-info-inline {
+  margin-top: 16px;
   opacity: 0;
   transition: opacity 0.8s ease;
-  pointer-events: none;
-  width: max(60%, 280px);
 }
 
-.song-info.visible { opacity: 1; }
+.song-info-inline.visible { opacity: 1; }
 
 .song-title {
   font-family: 'Outfit', sans-serif;
@@ -406,6 +384,7 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 80vw;
 }
 
 .song-artist {
@@ -416,6 +395,27 @@ html, body {
   letter-spacing: 0.1em;
   margin-top: 4px;
   text-transform: uppercase;
+}
+
+.tune-prompt-inline {
+  margin-top: 16px;
+  font-family: 'Space Mono', monospace;
+  font-weight: 400;
+  font-size: clamp(9px, 1.1vw, 11px);
+  color: rgba(255,255,255,0.2);
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  animation: breathe 3s ease-in-out infinite;
+}
+
+.error-msg-inline {
+  margin-top: 16px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: rgba(255,255,255,0.2);
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 /* --- DJ Script overlay --- */
@@ -441,40 +441,9 @@ html, body {
 
 .dj-overlay.visible { opacity: 1; }
 
-/* --- Tune in prompt --- */
-
 @keyframes breathe {
   0%, 100% { opacity: 0.12; }
   50% { opacity: 0.3; }
-}
-
-.tune-prompt {
-  position: absolute;
-  bottom: max(4vh, 24px);
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: 'Space Mono', monospace;
-  font-weight: 400;
-  font-size: clamp(9px, 1.1vw, 11px);
-  color: rgba(255,255,255,0.2);
-  letter-spacing: 0.35em;
-  text-transform: uppercase;
-  animation: breathe 3s ease-in-out infinite;
-}
-
-/* --- Error state --- */
-
-.error-msg {
-  position: absolute;
-  bottom: max(4vh, 24px);
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: 'Space Mono', monospace;
-  font-size: 11px;
-  color: rgba(255,255,255,0.2);
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  text-align: center;
 }
 
 /* Film grain */

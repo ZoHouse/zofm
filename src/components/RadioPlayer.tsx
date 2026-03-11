@@ -46,7 +46,7 @@ export function RadioPlayer() {
   }, [tuneIn]);
 
   return (
-    <div className="h-screen w-screen flex items-center justify-center relative overflow-hidden"
+    <div className="h-screen w-screen flex flex-col items-center justify-center relative overflow-hidden"
          style={{ background: '#080808' }}>
 
       <div className="grain" />
@@ -123,8 +123,8 @@ export function RadioPlayer() {
             stroke="url(#arc-grad)"
             strokeWidth="2"
             strokeLinecap="round"
-            strokeDasharray="75 215"
-            strokeDashoffset="30"
+            strokeDasharray="40 250"
+            strokeDashoffset="115"
           />
         </svg>
 
@@ -141,37 +141,28 @@ export function RadioPlayer() {
           </div>
         </div>
 
-        {/* Frequency display — overlaid on the lower half */}
-        <div style={{
-          position: 'absolute',
-          bottom: '16%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          textAlign: 'center',
-          zIndex: 4,
-          pointerEvents: 'none',
-        }}>
-          <div className="freq-number">
-            86<span className="decimal">.13</span>
-          </div>
-          <div className="freq-unit">kHz</div>
-        </div>
       </div>
 
-      {/* Bottom: song info or tune-in prompt */}
-      {!tunedIn ? (
-        <div className="tune-prompt">tune in</div>
-      ) : error ? (
-        <div className="error-msg" onClick={tuneIn}>
-          {error}<br />
-          <span style={{ opacity: 0.5 }}>tap to retry</span>
+      {/* Frequency + song info below dial */}
+      <div className="below-dial">
+        <div className="freq-number">
+          86<span className="decimal">.13</span>
         </div>
-      ) : (
-        <div className={`song-info ${isPlaying && currentSong ? 'visible' : ''}`}>
-          <div className="song-title">{currentSong?.title}</div>
-          <div className="song-artist">{currentSong?.artist}</div>
-        </div>
-      )}
+        <div className="freq-unit">kHz</div>
+
+        {!tunedIn ? (
+          <div className="tune-prompt-inline">tune in</div>
+        ) : error ? (
+          <div className="error-msg-inline" onClick={tuneIn}>
+            {error} &middot; <span style={{ opacity: 0.5 }}>tap to retry</span>
+          </div>
+        ) : isPlaying && currentSong ? (
+          <div className="song-info-inline visible">
+            <div className="song-title">{currentSong.title}</div>
+            <div className="song-artist">{currentSong.artist}</div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
