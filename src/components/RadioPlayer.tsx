@@ -64,12 +64,7 @@ export function RadioPlayer() {
         />
       </div>
 
-      {/* DJ script when Suki speaks */}
-      {isDJSpeaking && (
-        <div className={`dj-overlay ${djScript ? 'visible' : ''}`}>
-          &ldquo;{djScript}&rdquo;
-        </div>
-      )}
+      {/* DJ speaks — no visual, audio only */}
 
       {/* The Chrome Dial */}
       <div
