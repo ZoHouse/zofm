@@ -50,7 +50,7 @@ interface SongEntry {
   duration: number; // seconds — approximate
 }
 
-// All songs picked from official artist/label channels — embed-friendly on YouTube
+// All songs verified embeddable via YouTube oEmbed + yt-dlp
 const songs: SongEntry[] = [
   // ENERGETIC — morning energy, get moving, start the day shipping
   { id: "ZbZSe6N_BXs", title: "Happy", artist: "Pharrell Williams", mood: "energetic", genre: "pop", duration: 233 },
@@ -65,13 +65,10 @@ const songs: SongEntry[] = [
   { id: "fLexgOxsZu0", title: "Tongue Tied", artist: "Grouplove", mood: "energetic", genre: "indie", duration: 199 },
   { id: "y6Sxv-sUYtM", title: "Pumpin Blood", artist: "NONONO", mood: "energetic", genre: "indie-pop", duration: 199 },
   { id: "IPXIgEAGe4U", title: "Dog Days Are Over", artist: "Florence + The Machine", mood: "energetic", genre: "indie-rock", duration: 247 },
-  // Zo House Playlist — upbeat electronic energy
-  { id: "UxeW1cdHBYg", title: "Nadlan (Remix)", artist: "Zo House Playlist", mood: "energetic", genre: "electronic", duration: 385 },
-  { id: "xddbMkFXBVo", title: "San Pedro", artist: "Zo House Playlist", mood: "energetic", genre: "house", duration: 292 },
-  { id: "xXEAP82AL9g", title: "Im Ani Eshma", artist: "Zo House Playlist", mood: "energetic", genre: "electronic", duration: 171 },
-  { id: "Ji7ZL_zL90c", title: "Mr. President", artist: "Zo House Playlist", mood: "energetic", genre: "electronic", duration: 303 },
-  { id: "lmkAI7Dj22Y", title: "Take a Brake", artist: "Zo House Playlist", mood: "energetic", genre: "house", duration: 336 },
-  { id: "k1Z1XtQZyJY", title: "Fur Immer", artist: "Zo House Playlist", mood: "energetic", genre: "electronic", duration: 190 },
+  { id: "UxeW1cdHBYg", title: "Nadlan (Remix)", artist: "Loco Hot", mood: "energetic", genre: "electronic", duration: 385 },
+  { id: "xXEAP82AL9g", title: "Im Ani Eshma", artist: "Release", mood: "energetic", genre: "electronic", duration: 171 },
+  { id: "Ji7ZL_zL90c", title: "Mr. President", artist: "Shagy", mood: "energetic", genre: "electronic", duration: 303 },
+  { id: "lmkAI7Dj22Y", title: "Take a Brake", artist: "Shagy", mood: "energetic", genre: "house", duration: 336 },
 
   // CHILL — common room, afternoon wind-down, coffee + conversation
   { id: "450p7goxZqg", title: "Perfect", artist: "Ed Sheeran", mood: "chill", genre: "pop", duration: 263 },
@@ -82,27 +79,19 @@ const songs: SongEntry[] = [
   { id: "pBkHHoOIIn8", title: "Let Her Go", artist: "Passenger", mood: "chill", genre: "folk", duration: 253 },
   { id: "RsEZmictANA", title: "Ho Hey", artist: "The Lumineers", mood: "chill", genre: "folk-rock", duration: 163 },
   { id: "lp-EO5I60KA", title: "Riptide", artist: "Vance Joy", mood: "chill", genre: "indie-folk", duration: 204 },
-  { id: "QtPMeKh3bWg", title: "Budapest", artist: "George Ezra", mood: "chill", genre: "folk-pop", duration: 200 },
   { id: "hXI8RQYC36Q", title: "Put Your Records On", artist: "Corinne Bailey Rae", mood: "chill", genre: "soul", duration: 225 },
   { id: "k4V3Mo61fJM", title: "Better Together", artist: "Jack Johnson", mood: "chill", genre: "acoustic", duration: 207 },
-  { id: "dCPgMN3Ky3g", title: "Home", artist: "Edward Sharpe & The Magnetic Zeros", mood: "chill", genre: "indie-folk", duration: 305 },
 
   // FOCUS — deep work, build sprints, flow state
   { id: "lTRiuFIWV54", title: "Interstellar Main Theme", artist: "Hans Zimmer", mood: "focus", genre: "soundtrack", duration: 295 },
   { id: "Fe93CLbHjxQ", title: "Time (Inception)", artist: "Hans Zimmer", mood: "focus", genre: "soundtrack", duration: 284 },
   { id: "WDXPJWIgX-o", title: "Nuvole Bianche", artist: "Ludovico Einaudi", mood: "focus", genre: "classical", duration: 348 },
-  { id: "4N3N1MlvVc4", title: "River Flows in You", artist: "Yiruma", mood: "focus", genre: "classical", duration: 183 },
   { id: "kgx4WGK0oNU", title: "Clair de Lune", artist: "Debussy", mood: "focus", genre: "classical", duration: 312 },
   { id: "HuFYqnbVbzY", title: "Cornfield Chase", artist: "Hans Zimmer", mood: "focus", genre: "soundtrack", duration: 128 },
-  { id: "n61ULFL0_j8", title: "Weightless", artist: "Marconi Union", mood: "focus", genre: "ambient", duration: 480 },
   { id: "7kkRkhAXZGg", title: "Experience", artist: "Ludovico Einaudi", mood: "focus", genre: "classical", duration: 312 },
   { id: "TKfS5zVfGBc", title: "Arrival of the Birds", artist: "The Cinematic Orchestra", mood: "focus", genre: "cinematic", duration: 255 },
   { id: "vjncyiuwwXQ", title: "Gymnopédie No.1", artist: "Erik Satie", mood: "focus", genre: "classical", duration: 192 },
   { id: "RxabLA7UQ9k", title: "The Theory of Everything", artist: "Jóhann Jóhannsson", mood: "focus", genre: "soundtrack", duration: 193 },
-  { id: "MEg-oqR9q3E", title: "Una Mattina", artist: "Ludovico Einaudi", mood: "focus", genre: "classical", duration: 198 },
-  // Zo House Playlist — ambient electronic for deep work
-  { id: "fU5gGO4a_XI", title: "Tiama", artist: "Zo House Playlist", mood: "focus", genre: "ambient", duration: 264 },
-  { id: "x8s5VCICKM0", title: "Soma", artist: "Zo House Playlist", mood: "focus", genre: "ambient", duration: 240 },
 
   // PARTY — evening energy, house events, communal dinners turning into dance floors
   { id: "kTJczUoc26U", title: "Lean On", artist: "Major Lazer & DJ Snake", mood: "party", genre: "edm", duration: 176 },
@@ -115,19 +104,16 @@ const songs: SongEntry[] = [
   { id: "kOkQ4T5WO9E", title: "Wake Me Up", artist: "Avicii", mood: "party", genre: "edm", duration: 247 },
   { id: "_ovdm2yX4MA", title: "Levels", artist: "Avicii", mood: "party", genre: "edm", duration: 203 },
   { id: "gCYcHz2k5x0", title: "Animals", artist: "Martin Garrix", mood: "party", genre: "edm", duration: 305 },
-  { id: "YnwsMqLbO6c", title: "Titanium", artist: "David Guetta ft. Sia", mood: "party", genre: "edm", duration: 245 },
   { id: "SiMHTK15Pik", title: "The Nights", artist: "Avicii", mood: "party", genre: "edm", duration: 177 },
-  // Zo House Playlist — house/electronic party tracks
   { id: "cafHoQjQr2U", title: "Do De Te (HIGHLITE Remix)", artist: "HIGHLITE", mood: "party", genre: "house", duration: 384 },
-  { id: "xezlibVAW5Y", title: "Bonita", artist: "Zo House Playlist", mood: "party", genre: "house", duration: 335 },
-  { id: "7a2mAVQUZ0o", title: "Loving Club", artist: "Zo House Playlist", mood: "party", genre: "house", duration: 330 },
-  { id: "wIAE3q73wrc", title: "Club 04", artist: "Zo House Playlist", mood: "party", genre: "house", duration: 356 },
-  { id: "ReGlx_VddMc", title: "Planet Sun", artist: "Zo House Playlist", mood: "party", genre: "house", duration: 330 },
-  { id: "5AdUARmaMdQ", title: "Who I Am", artist: "Zo House Playlist", mood: "party", genre: "house", duration: 355 },
-  { id: "WVqo9SKNyds", title: "It's On", artist: "Zo House Playlist", mood: "party", genre: "house", duration: 315 },
-  { id: "dUbnvxB7WtA", title: "Let Your Body Fly", artist: "Zo House Playlist", mood: "party", genre: "house", duration: 205 },
+  { id: "xezlibVAW5Y", title: "Bonita", artist: "Jacob", mood: "party", genre: "house", duration: 335 },
+  { id: "7a2mAVQUZ0o", title: "Loving Club", artist: "Shagy", mood: "party", genre: "house", duration: 330 },
+  { id: "wIAE3q73wrc", title: "Club 04", artist: "Adam Ten", mood: "party", genre: "house", duration: 356 },
+  { id: "5AdUARmaMdQ", title: "Who I Am", artist: "Rebrn", mood: "party", genre: "house", duration: 355 },
+  { id: "WVqo9SKNyds", title: "It's On", artist: "Monro", mood: "party", genre: "house", duration: 315 },
+  { id: "dUbnvxB7WtA", title: "Let Your Body Fly", artist: "Maison Royale", mood: "party", genre: "house", duration: 205 },
   { id: "oSPT27XyY1U", title: "Kill The Noise", artist: "Kill The Noise & Feed Me", mood: "party", genre: "electronic", duration: 202 },
-  { id: "FN4ibw_Wp2k", title: "This Is Who I Am", artist: "Zo House Playlist", mood: "party", genre: "house", duration: 392 },
+  { id: "FN4ibw_Wp2k", title: "This Is Who I Am", artist: "Monro", mood: "party", genre: "house", duration: 392 },
 
   // LATE-NIGHT — post-midnight, hacking sessions, 3am kitchen conversations
   { id: "4fndeDfaWCg", title: "Blinding Lights", artist: "The Weeknd", mood: "late-night", genre: "synth-pop", duration: 200 },
@@ -142,19 +128,17 @@ const songs: SongEntry[] = [
   { id: "QkF3oxziUI4", title: "Stairway to Heaven", artist: "Led Zeppelin", mood: "late-night", genre: "rock", duration: 482 },
   { id: "KQ6zr6kCPj8", title: "Life on Mars?", artist: "David Bowie", mood: "late-night", genre: "art-rock", duration: 235 },
   { id: "k2C5TjS2sh4", title: "A-Punk", artist: "Vampire Weekend", mood: "late-night", genre: "indie", duration: 137 },
-  // Zo House Playlist — deeper electronic for late nights
-  { id: "q-hEVTskFs8", title: "Ananas", artist: "Zo House Playlist", mood: "late-night", genre: "electronic", duration: 355 },
-  { id: "3KgqV4E-E68", title: "Tetris", artist: "Zo House Playlist", mood: "late-night", genre: "electronic", duration: 364 },
-  { id: "66LhKW2Z93c", title: "Allenby", artist: "Zo House Playlist", mood: "late-night", genre: "electronic", duration: 393 },
-  { id: "gef0MASMgtM", title: "Back in 1995", artist: "Zo House Playlist", mood: "late-night", genre: "electronic", duration: 410 },
-  { id: "e2xRZHHjQwE", title: "Look Back", artist: "Zo House Playlist", mood: "late-night", genre: "electronic", duration: 370 },
+  { id: "q-hEVTskFs8", title: "Ananas", artist: "Jacob", mood: "late-night", genre: "electronic", duration: 355 },
+  { id: "3KgqV4E-E68", title: "Tetris", artist: "Rebrn", mood: "late-night", genre: "electronic", duration: 364 },
+  { id: "gef0MASMgtM", title: "Back in 1995", artist: "Morgi", mood: "late-night", genre: "electronic", duration: 410 },
+  { id: "e2xRZHHjQwE", title: "Look Back", artist: "Jacob", mood: "late-night", genre: "electronic", duration: 370 },
   { id: "d_9Rjw2SnlM", title: "Gidafi Na (Red Axes Edit)", artist: "Red Axes", mood: "late-night", genre: "electronic", duration: 457 },
-  { id: "QQk7CVCImEQ", title: "One Night in TLV", artist: "Zo House Playlist", mood: "late-night", genre: "electronic", duration: 410 },
-  { id: "Q5Cz6UVCg7M", title: "Spaceship Eyes", artist: "Zo House Playlist", mood: "late-night", genre: "electronic", duration: 378 },
-  { id: "01Skgv0kk7g", title: "Gaia", artist: "Zo House Playlist", mood: "late-night", genre: "electronic", duration: 444 },
-  { id: "ydEIAO2edNc", title: "Technique", artist: "Zo House Playlist", mood: "late-night", genre: "electronic", duration: 360 },
-  { id: "CrXdgPMjgzk", title: "Warning", artist: "Zo House Playlist", mood: "late-night", genre: "electronic", duration: 372 },
-  { id: "t_N_LuB4XYo", title: "Connected", artist: "Zo House Playlist", mood: "late-night", genre: "electronic", duration: 447 },
+  { id: "QQk7CVCImEQ", title: "One Night in TLV", artist: "Monro", mood: "late-night", genre: "electronic", duration: 410 },
+  { id: "Q5Cz6UVCg7M", title: "Spaceship Eyes", artist: "Lali", mood: "late-night", genre: "electronic", duration: 378 },
+  { id: "01Skgv0kk7g", title: "Gaia", artist: "MANNA", mood: "late-night", genre: "electronic", duration: 444 },
+  { id: "ydEIAO2edNc", title: "Technique", artist: "Morgi", mood: "late-night", genre: "electronic", duration: 360 },
+  { id: "CrXdgPMjgzk", title: "Warning", artist: "Jacob", mood: "late-night", genre: "electronic", duration: 372 },
+  { id: "t_N_LuB4XYo", title: "Connected", artist: "Alexey Union", mood: "late-night", genre: "electronic", duration: 447 },
 
   // ROMANTIC — rooftop hours, pre-dawn, deep conversations becoming deeper
   { id: "lWA2pjMjpBs", title: "Thinking Out Loud", artist: "Ed Sheeran", mood: "romantic", genre: "pop", duration: 281 },
@@ -167,8 +151,6 @@ const songs: SongEntry[] = [
   { id: "JkK8g6FMEXE", title: "I Don't Want to Miss a Thing", artist: "Aerosmith", mood: "romantic", genre: "rock", duration: 298 },
   { id: "WpYeekQkAdc", title: "Everything I Do", artist: "Bryan Adams", mood: "romantic", genre: "rock", duration: 394 },
   { id: "SpSMoBp8awM", title: "I'm Yours", artist: "Jason Mraz", mood: "romantic", genre: "acoustic", duration: 242 },
-  { id: "lXb3z_o8cFo", title: "Something", artist: "The Beatles", mood: "romantic", genre: "classic-rock", duration: 182 },
-  { id: "raNGeq3_DtI", title: "Yellow", artist: "Coldplay", mood: "romantic", genre: "alt-rock", duration: 269 },
 ];
 
 // --- Seeded shuffle (deterministic for a given seed) ---
