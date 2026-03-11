@@ -5,3 +5,8 @@ body {
   color: #fff;
   overflow-x: hidden;
 }
+
+@keyframes equalizer {
+  0% { height: 4px; }
+  100% { height: 28px; }
+}

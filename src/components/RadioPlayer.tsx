@@ -1,114 +1,31 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { useShowClock } from '@/lib/useShowClock';
-import { MoodSelector } from './MoodSelector';
-import { DJBanner } from './DJBanner';
+import { useRadioSync } from '@/lib/useRadioSync';
 
 const YouTube = dynamic(() => import('react-youtube').then(mod => mod.default), {
   ssr: false,
 });
 
 export function RadioPlayer() {
-  const {
-    state,
-    currentSong,
-    mood,
-    djScript,
-    isPlaying,
-    error,
-    setMood,
-    startShow,
-    onSongEnd,
-    playerRef,
-  } = useShowClock();
-
+  const { status, currentSong, slot, djScript, error, tuneIn, onPlayerReady } = useRadioSync();
   const [tunedIn, setTunedIn] = useState(false);
-
-  // Use refs for stable callbacks passed to YouTube component
-  const onSongEndRef = useRef(onSongEnd);
-  onSongEndRef.current = onSongEnd;
-  const isPlayingRef = useRef(isPlaying);
-  isPlayingRef.current = isPlaying;
 
   const handleTuneIn = useCallback(() => {
     setTunedIn(true);
-    startShow();
-  }, [startShow]);
-
-  const handleReady = useCallback((event: { target: YT.Player }) => {
-    playerRef.current = event.target;
-    event.target.setVolume(80);
-  }, [playerRef]);
-
-  const handleStateChange = useCallback((event: { data: number }) => {
-    if (event.data === 0 && isPlayingRef.current) {
-      onSongEndRef.current();
-    }
-  }, []);
+    // tuneIn() is synchronous — plays immediately within user gesture
+    tuneIn();
+  }, [tuneIn]);
 
   const handleError = useCallback(() => {
-    if (isPlayingRef.current) {
-      onSongEndRef.current();
-    }
+    // YouTube error — sync will pick up next song automatically
   }, []);
 
-  // Pre-tune-in: full-screen "Tune In" splash
-  if (!tunedIn) {
-    return (
-      <div
-        onClick={handleTuneIn}
-        className="min-h-screen bg-gradient-to-b from-zinc-900 via-black to-zinc-900 flex flex-col items-center justify-center p-8 cursor-pointer select-none"
-      >
-        <div className="text-center space-y-6 animate-pulse">
-          <h1 className="text-6xl font-black text-white tracking-tight">
-            ZO<span className="text-purple-400">FM</span>
-          </h1>
-          <p className="text-white/50 text-lg uppercase tracking-[0.3em]">
-            Tap anywhere to tune in
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Tuned in: the radio experience
   return (
-    <div className="min-h-screen bg-gradient-to-b from-zinc-900 via-black to-zinc-900 flex flex-col items-center justify-center p-8 gap-8">
-      {/* Header */}
-      <div className="text-center">
-        <h1 className="text-5xl font-black text-white tracking-tight">
-          ZO<span className="text-purple-400">FM</span>
-        </h1>
-        <div className="flex items-center justify-center gap-2 mt-2">
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <p className="text-white/50 text-sm uppercase tracking-widest">Live</p>
-        </div>
-      </div>
-
-      {/* DJ Banner */}
-      <DJBanner
-        state={state}
-        djScript={djScript}
-        songTitle={currentSong?.title}
-        songArtist={currentSong?.artist}
-      />
-
-      {/* Mood Selector — always available to switch vibes */}
-      <MoodSelector
-        selected={mood}
-        onSelect={setMood}
-        disabled={false}
-      />
-
-      {/* Error */}
-      {error && (
-        <p className="text-red-400 text-sm">{error}</p>
-      )}
-
-      {/* Persistent YouTube Player */}
-      <div className="absolute -left-[9999px]">
+    <div className="min-h-screen bg-gradient-to-b from-zinc-900 via-black to-zinc-900 flex flex-col items-center justify-center">
+      {/* YouTube player — always mounted so it's ready before tune-in */}
+      <div className="fixed w-0 h-0 overflow-hidden opacity-0 pointer-events-none" aria-hidden="true">
         <YouTube
           opts={{
             height: '1',
@@ -119,13 +36,109 @@ export function RadioPlayer() {
               disablekb: 1,
               fs: 0,
               modestbranding: 1,
+              playsinline: 1,
             },
           }}
-          onReady={handleReady}
-          onStateChange={handleStateChange}
+          onReady={onPlayerReady}
           onError={handleError}
         />
       </div>
+
+      {!tunedIn ? (
+        /* --- Splash screen --- */
+        <div
+          onClick={handleTuneIn}
+          className="flex flex-col items-center justify-center cursor-pointer select-none p-8"
+        >
+          <div className="text-center space-y-6">
+            <h1 className="text-7xl font-black text-white tracking-tight">
+              ZO<span className="text-purple-400">FM</span>
+            </h1>
+            {slot && (
+              <p className="text-white/30 text-xs uppercase tracking-[0.2em]">
+                {slot.name}
+              </p>
+            )}
+            <div className="animate-pulse">
+              <p className="text-white/40 text-lg uppercase tracking-[0.3em]">
+                Tap to tune in
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* --- Radio UI --- */
+        <div className="flex flex-col items-center justify-center p-8">
+          {/* Logo */}
+          <h1 className="text-5xl font-black text-white tracking-tight mb-2">
+            ZO<span className="text-purple-400">FM</span>
+          </h1>
+
+          {/* Live indicator */}
+          <div className="flex items-center gap-2 mb-10">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <p className="text-white/50 text-xs uppercase tracking-[0.2em]">
+              {slot ? slot.name : 'Connecting...'}
+            </p>
+          </div>
+
+          {/* Now playing card */}
+          <div className="w-full max-w-sm bg-white/5 backdrop-blur rounded-2xl p-6 text-center space-y-4">
+            {status === 'loading' && (
+              <p className="text-white/40 text-sm">Tuning in...</p>
+            )}
+
+            {status === 'dj-speaking' && (
+              <>
+                <p className="text-purple-400 text-xs uppercase tracking-widest font-medium">
+                  {slot?.djName} on air
+                </p>
+                <p className="text-white/70 text-sm italic leading-relaxed">
+                  &ldquo;{djScript}&rdquo;
+                </p>
+              </>
+            )}
+
+            {(status === 'playing' || status === 'dj-speaking') && currentSong && (
+              <>
+                <p className="text-white text-xl font-bold leading-tight">
+                  {currentSong.title}
+                </p>
+                <p className="text-white/50 text-sm">
+                  {currentSong.artist}
+                </p>
+              </>
+            )}
+
+            {status === 'error' && (
+              <div className="space-y-2">
+                <p className="text-red-400 text-sm">{error}</p>
+                <button
+                  onClick={tuneIn}
+                  className="text-purple-400 text-sm underline"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Equalizer bars animation */}
+          {status === 'playing' && (
+            <div className="flex items-end gap-1 mt-8 h-8">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div
+                  key={i}
+                  className="w-1 bg-purple-400/60 rounded-full"
+                  style={{
+                    animation: `equalizer ${0.4 + i * 0.1}s ease-in-out infinite alternate`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -3,7 +3,8 @@ declare namespace YT {
     playVideo(): void;
     pauseVideo(): void;
     stopVideo(): void;
-    loadVideoById(videoId: string): void;
+    loadVideoById(videoId: string | { videoId: string; startSeconds?: number }): void;
+    seekTo(seconds: number, allowSeekAhead?: boolean): void;
     setVolume(volume: number): void;
     getVolume(): number;
     mute(): void;

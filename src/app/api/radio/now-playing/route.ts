@@ -1,0 +1,210 @@
+import { NextResponse } from 'next/server';
+
+// --- IST time helpers ---
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+function getISTDate() {
+  const now = new Date();
+  return new Date(now.getTime() + IST_OFFSET_MS + now.getTimezoneOffset() * 60000);
+}
+
+function getISTHour() {
+  return getISTDate().getHours();
+}
+
+function getDaySeed() {
+  const ist = getISTDate();
+  const dateStr = ist.toISOString().slice(0, 10).replace(/-/g, '');
+  return parseInt(dateStr, 10);
+}
+
+// --- Schedule slots (IST) ---
+const slots = [
+  { name: 'Morning Chai',        mood: 'energetic',  startHour: 6,  endHour: 10, voice: 'nova',    djName: 'Suki' },
+  { name: 'Common Room',         mood: 'chill',      startHour: 10, endHour: 14, voice: 'nova',    djName: 'Suki' },
+  { name: 'Deep Work',           mood: 'focus',      startHour: 14, endHour: 18, voice: 'shimmer', djName: 'Suki' },
+  { name: 'House Party',         mood: 'party',      startHour: 18, endHour: 22, voice: 'nova',    djName: 'Suki' },
+  { name: 'After Hours',         mood: 'late-night', startHour: 22, endHour: 26, voice: 'nova',    djName: 'Suki' },
+  { name: 'Rooftop Hours',       mood: 'romantic',   startHour: 2,  endHour: 6,  voice: 'shimmer', djName: 'Suki' },
+];
+
+function getCurrentSlot() {
+  const hour = getISTHour();
+  for (const slot of slots) {
+    if (slot.startHour <= slot.endHour) {
+      if (hour >= slot.startHour && hour < slot.endHour) return slot;
+    } else {
+      if (hour >= slot.startHour || hour < (slot.endHour % 24)) return slot;
+    }
+  }
+  return slots[0];
+}
+
+// --- Songs catalog (duplicated here to keep API route self-contained) ---
+interface SongEntry {
+  id: string;
+  title: string;
+  artist: string;
+  mood: string;
+  genre: string;
+  duration: number; // seconds — approximate
+}
+
+const songs: SongEntry[] = [
+  // ENERGETIC
+  { id: "JGwWNGJdvx8", title: "Shape of You", artist: "Ed Sheeran", mood: "energetic", genre: "pop", duration: 234 },
+  { id: "kJQP7kiw5Fk", title: "Despacito", artist: "Luis Fonsi ft. Daddy Yankee", mood: "energetic", genre: "latin-pop", duration: 282 },
+  { id: "OPf0YbXqDm0", title: "Uptown Funk", artist: "Mark Ronson ft. Bruno Mars", mood: "energetic", genre: "funk-pop", duration: 270 },
+  { id: "CevxZvSJLk8", title: "Roar", artist: "Katy Perry", mood: "energetic", genre: "pop", duration: 264 },
+  { id: "09R8_2nJtjg", title: "Sugar", artist: "Maroon 5", mood: "energetic", genre: "pop", duration: 235 },
+  { id: "nfs8NYg7yQM", title: "HUMBLE.", artist: "Kendrick Lamar", mood: "energetic", genre: "hip-hop", duration: 177 },
+  { id: "DyDfgMOUjCI", title: "Bom Diggy Diggy", artist: "Zack Knight & Jasmin Walia", mood: "energetic", genre: "bollywood", duration: 200 },
+  { id: "7PCkvCPvDXk", title: "Kar Gayi Chull", artist: "Badshah & Neha Kakkar", mood: "energetic", genre: "bollywood", duration: 198 },
+  { id: "RgKAFK5djSk", title: "See You Again", artist: "Wiz Khalifa ft. Charlie Puth", mood: "energetic", genre: "hip-hop", duration: 237 },
+  { id: "iS1g8G_njx8", title: "Cheap Thrills", artist: "Sia ft. Sean Paul", mood: "energetic", genre: "pop", duration: 224 },
+
+  // CHILL
+  { id: "lp-EO5I60KA", title: "Tum Hi Ho", artist: "Arijit Singh", mood: "chill", genre: "bollywood", duration: 262 },
+  { id: "450p7goxZqg", title: "Perfect", artist: "Ed Sheeran", mood: "chill", genre: "pop", duration: 263 },
+  { id: "bo_efYhYU2A", title: "Agar Tum Saath Ho", artist: "Arijit Singh & Alka Yagnik", mood: "chill", genre: "bollywood", duration: 335 },
+  { id: "60ItHLz5WEA", title: "All of Me", artist: "John Legend", mood: "chill", genre: "pop", duration: 269 },
+  { id: "RBumgq5yVrA", title: "Photograph", artist: "Ed Sheeran", mood: "chill", genre: "pop", duration: 258 },
+  { id: "7maJOI3QMu0", title: "Stay With Me", artist: "Sam Smith", mood: "chill", genre: "pop", duration: 172 },
+  { id: "hLQl3WQQoQ0", title: "Someone Like You", artist: "Adele", mood: "chill", genre: "pop", duration: 285 },
+  { id: "YQHsXMglC9A", title: "Hello", artist: "Adele", mood: "chill", genre: "pop", duration: 367 },
+  { id: "qemWRToNYJY", title: "Humdard", artist: "Arijit Singh", mood: "chill", genre: "bollywood", duration: 266 },
+  { id: "nfWlot6h_JM", title: "Say You Won't Let Go", artist: "James Arthur", mood: "chill", genre: "pop", duration: 211 },
+
+  // ROMANTIC
+  { id: "0yW7w8F2TVA", title: "Tum Se Hi", artist: "Mohit Chauhan", mood: "romantic", genre: "bollywood", duration: 330 },
+  { id: "lWA2pjMjpBs", title: "Thinking Out Loud", artist: "Ed Sheeran", mood: "romantic", genre: "pop", duration: 281 },
+  { id: "nSDgHBxUbVQ", title: "Channa Mereya", artist: "Arijit Singh", mood: "romantic", genre: "bollywood", duration: 289 },
+  { id: "rtOvBOTyX00", title: "Kal Ho Naa Ho", artist: "Sonu Nigam", mood: "romantic", genre: "bollywood", duration: 322 },
+  { id: "PIh2xe4jnpk", title: "Crazy in Love", artist: "Beyonce ft. Jay-Z", mood: "romantic", genre: "r&b", duration: 236 },
+  { id: "fGx6K90TmCI", title: "A Thousand Years", artist: "Christina Perri", mood: "romantic", genre: "pop", duration: 285 },
+  { id: "WpYeekQkAdc", title: "Everything I Do", artist: "Bryan Adams", mood: "romantic", genre: "rock", duration: 394 },
+  { id: "R-gCljdWa3g", title: "Raabta", artist: "Arijit Singh", mood: "romantic", genre: "bollywood", duration: 253 },
+  { id: "3AtDnEC4zak", title: "All of Me (Live)", artist: "John Legend", mood: "romantic", genre: "pop", duration: 309 },
+  { id: "kPa7bsKwL-c", title: "Hawayein", artist: "Arijit Singh", mood: "romantic", genre: "bollywood", duration: 280 },
+
+  // PARTY
+  { id: "kTJczUoc26U", title: "Lean On", artist: "Major Lazer & DJ Snake", mood: "party", genre: "edm", duration: 176 },
+  { id: "hT_nvWreIhg", title: "Counting Stars", artist: "OneRepublic", mood: "party", genre: "pop-rock", duration: 257 },
+  { id: "fRh_vgS2dFE", title: "Sorry", artist: "Justin Bieber", mood: "party", genre: "pop", duration: 200 },
+  { id: "nYh-n7EOtMA", title: "London Thumakda", artist: "Labh Janjua", mood: "party", genre: "bollywood", duration: 227 },
+  { id: "2vjPBrBU-TM", title: "Savage Love", artist: "Jawsh 685 & Jason Derulo", mood: "party", genre: "pop", duration: 171 },
+  { id: "IcrbM1l_BoI", title: "Closer", artist: "The Chainsmokers ft. Halsey", mood: "party", genre: "edm", duration: 245 },
+  { id: "ru0K8uYEZWw", title: "Thunder", artist: "Imagine Dragons", mood: "party", genre: "pop-rock", duration: 187 },
+  { id: "hHW1oY26kxQ", title: "Gallan Goodiyaan", artist: "Dil Dhadakne Do", mood: "party", genre: "bollywood", duration: 269 },
+  { id: "kXYiU_JCYtU", title: "Numb", artist: "Linkin Park", mood: "party", genre: "rock", duration: 187 },
+  { id: "bx1Bh8ZvH84", title: "Hymn for the Weekend", artist: "Coldplay", mood: "party", genre: "alt-pop", duration: 258 },
+
+  // FOCUS
+  { id: "lTRiuFIWV54", title: "Interstellar Main Theme", artist: "Hans Zimmer", mood: "focus", genre: "soundtrack", duration: 295 },
+  { id: "Fe93CLbHjxQ", title: "Time (Inception)", artist: "Hans Zimmer", mood: "focus", genre: "soundtrack", duration: 284 },
+  { id: "n61ULFL0_j8", title: "Weightless", artist: "Marconi Union", mood: "focus", genre: "ambient", duration: 480 },
+  { id: "WDXPJWIgX-o", title: "Nuvole Bianche", artist: "Ludovico Einaudi", mood: "focus", genre: "classical", duration: 348 },
+  { id: "4N3N1MlvVc4", title: "River Flows in You", artist: "Yiruma", mood: "focus", genre: "classical", duration: 183 },
+  { id: "kgx4WGK0oNU", title: "Clair de Lune", artist: "Debussy", mood: "focus", genre: "classical", duration: 312 },
+  { id: "7kkRkhAXZGg", title: "Ilahi", artist: "Arijit Singh", mood: "focus", genre: "bollywood", duration: 233 },
+  { id: "5qap5aO4i9A", title: "Lofi Hip Hop Radio", artist: "Lofi Girl", mood: "focus", genre: "lo-fi", duration: 300 },
+  { id: "HuFYqnbVbzY", title: "Cornfield Chase", artist: "Hans Zimmer", mood: "focus", genre: "soundtrack", duration: 128 },
+  { id: "pUZeSYsU0Uk", title: "Kun Faya Kun", artist: "A.R. Rahman", mood: "focus", genre: "bollywood", duration: 462 },
+
+  // LATE-NIGHT
+  { id: "fJ9rUzIMcZQ", title: "Bohemian Rhapsody", artist: "Queen", mood: "late-night", genre: "rock", duration: 355 },
+  { id: "4fndeDfaWCg", title: "Blinding Lights", artist: "The Weeknd", mood: "late-night", genre: "synth-pop", duration: 200 },
+  { id: "RvA3q0ZU-NQ", title: "Starboy", artist: "The Weeknd ft. Daft Punk", mood: "late-night", genre: "synth-pop", duration: 230 },
+  { id: "YnwfTHpnGLY", title: "Radioactive", artist: "Imagine Dragons", mood: "late-night", genre: "alt-rock", duration: 187 },
+  { id: "aJOTlE1K90k", title: "Phir Le Aya Dil", artist: "Arijit Singh", mood: "late-night", genre: "bollywood", duration: 324 },
+  { id: "RtCxvv8Y3Bs", title: "Excuses", artist: "AP Dhillon & Gurinder Gill", mood: "late-night", genre: "punjabi", duration: 218 },
+  { id: "k2qgadSvNyU", title: "Brown Munde", artist: "AP Dhillon", mood: "late-night", genre: "punjabi", duration: 218 },
+  { id: "QdBZY2fkU-0", title: "500 Miles", artist: "The Proclaimers", mood: "late-night", genre: "rock", duration: 220 },
+  { id: "FTQbiNvZqaY", title: "Africa", artist: "Toto", mood: "late-night", genre: "rock", duration: 275 },
+  { id: "sOnqjkJTMaA", title: "Throw a Fit", artist: "Tinashe", mood: "late-night", genre: "r&b", duration: 190 },
+];
+
+// --- Seeded shuffle (deterministic for a given seed) ---
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const shuffled = [...arr];
+  let s = seed;
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    const j = ((s >>> 0) % (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// --- Core: compute what's playing right now ---
+
+function getNowPlaying() {
+  const slot = getCurrentSlot();
+  const moodSongs = songs.filter(s => s.mood === slot.mood);
+
+  // Deterministic shuffle for today + this slot
+  const seed = getDaySeed() + slot.startHour;
+  const playlist = seededShuffle(moodSongs, seed);
+
+  // Calculate how far into this slot we are (in seconds)
+  const ist = getISTDate();
+  const slotStartHour = slot.startHour;
+  const currentHour = ist.getHours();
+  const currentMinutes = ist.getMinutes();
+  const currentSeconds = ist.getSeconds();
+
+  // Handle midnight wrap: if slot starts at 22 and current is 1, adjust
+  let hoursIntoSlot = currentHour - slotStartHour;
+  if (hoursIntoSlot < 0) hoursIntoSlot += 24;
+
+  const secondsIntoSlot = hoursIntoSlot * 3600 + currentMinutes * 60 + currentSeconds;
+
+  // Walk through playlist to find which song is playing
+  // Songs loop within the slot, so we mod by total playlist duration
+  const totalPlaylistDuration = playlist.reduce((sum, s) => sum + s.duration, 0);
+  const positionInPlaylist = secondsIntoSlot % totalPlaylistDuration;
+
+  let elapsed = 0;
+  for (let i = 0; i < playlist.length; i++) {
+    const song = playlist[i];
+    if (elapsed + song.duration > positionInPlaylist) {
+      const seekTo = positionInPlaylist - elapsed;
+      const nextSong = playlist[(i + 1) % playlist.length];
+      const previousSong = i > 0 ? playlist[i - 1] : playlist[playlist.length - 1];
+      return {
+        song: { id: song.id, title: song.title, artist: song.artist, mood: song.mood, genre: song.genre },
+        seekTo: Math.floor(seekTo),
+        duration: song.duration,
+        slot: { name: slot.name, mood: slot.mood, djName: slot.djName, voice: slot.voice },
+        nextSong: { id: nextSong.id, title: nextSong.title, artist: nextSong.artist },
+        previousSong: { id: previousSong.id, title: previousSong.title, artist: previousSong.artist },
+        playlistIndex: i,
+        playlistLength: playlist.length,
+        serverTime: Date.now(),
+      };
+    }
+    elapsed += song.duration;
+  }
+
+  // Fallback (shouldn't happen)
+  return {
+    song: { id: playlist[0].id, title: playlist[0].title, artist: playlist[0].artist, mood: playlist[0].mood, genre: playlist[0].genre },
+    seekTo: 0,
+    duration: playlist[0].duration,
+    slot: { name: slot.name, mood: slot.mood, djName: slot.djName, voice: slot.voice },
+    nextSong: { id: playlist[1].id, title: playlist[1].title, artist: playlist[1].artist },
+    previousSong: { id: playlist[playlist.length - 1].id, title: playlist[playlist.length - 1].title, artist: playlist[playlist.length - 1].artist },
+    playlistIndex: 0,
+    playlistLength: playlist.length,
+    serverTime: Date.now(),
+  };
+}
+
+export async function GET() {
+  const data = getNowPlaying();
+  return NextResponse.json(data, {
+    headers: {
+      'Cache-Control': 'no-store, max-age=0',
+    },
+  });
+}
