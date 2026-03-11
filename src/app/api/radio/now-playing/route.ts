@@ -112,7 +112,6 @@ const songs: SongEntry[] = [
   { id: "5AdUARmaMdQ", title: "Who I Am", artist: "Rebrn", mood: "party", genre: "house", duration: 355 },
   { id: "WVqo9SKNyds", title: "It's On", artist: "Monro", mood: "party", genre: "house", duration: 315 },
   { id: "dUbnvxB7WtA", title: "Let Your Body Fly", artist: "Maison Royale", mood: "party", genre: "house", duration: 205 },
-  { id: "oSPT27XyY1U", title: "Kill The Noise", artist: "Kill The Noise & Feed Me", mood: "party", genre: "electronic", duration: 202 },
   { id: "FN4ibw_Wp2k", title: "This Is Who I Am", artist: "Monro", mood: "party", genre: "house", duration: 392 },
 
   // LATE-NIGHT — post-midnight, hacking sessions, 3am kitchen conversations
