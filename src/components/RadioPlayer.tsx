@@ -33,7 +33,7 @@ function generateTicks() {
 }
 
 export function RadioPlayer() {
-  const { status, currentSong, slot, djScript, error, tuneIn, onPlayerReady } = useRadioSync();
+  const { status, currentSong, slot, djScript, error, tuneIn, onPlayerReady, onPlayerEnd } = useRadioSync();
   const [tunedIn, setTunedIn] = useState(false);
   const ticks = useMemo(() => generateTicks(), []);
 
@@ -60,6 +60,7 @@ export function RadioPlayer() {
             playerVars: { autoplay: 0, controls: 0, disablekb: 1, fs: 0, modestbranding: 1, playsinline: 1 },
           }}
           onReady={onPlayerReady}
+          onEnd={onPlayerEnd}
           onError={() => {}}
         />
       </div>

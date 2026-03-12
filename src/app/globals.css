@@ -330,7 +330,7 @@ html, body {
 .freq-number {
   font-family: 'Outfit', sans-serif;
   font-weight: 200;
-  font-size: clamp(24px, 5.5vw, 44px);
+  font-size: clamp(18px, 3.8vw, 30px);
   letter-spacing: -0.03em;
   line-height: 1;
   background: linear-gradient(

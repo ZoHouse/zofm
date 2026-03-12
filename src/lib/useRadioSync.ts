@@ -53,6 +53,9 @@ export function useRadioSync() {
   // Pre-fetched DJ clip for next transition
   const prefetchedDJRef = useRef<{ audioBlob: Blob; script: string; forSongId: string } | null>(null);
 
+  // Track which video ID we already corrected the title for
+  const titleCorrectedForRef = useRef<string | null>(null);
+
   // Latest now-playing data
   const latestDataRef = useRef<NowPlayingData | null>(null);
 
@@ -323,6 +326,7 @@ export function useRadioSync() {
       // Reset monitor flags for new song
       prefetchStartedForRef.current = null;
       crossfadeStartedForRef.current = null;
+      titleCorrectedForRef.current = null;
 
       // Schedule next poll
       const freshData = latestDataRef.current;
@@ -371,8 +375,49 @@ export function useRadioSync() {
       if (!ytDuration || ytDuration <= 0) return;
       const remaining = ytDuration - ytCurrent;
 
-      // At ~20s remaining: pre-fetch DJ clip (more time for longer scripts)
-      if (remaining < 21 && remaining > 5 && prefetchStartedForRef.current !== data.song.id) {
+      // Correct displayed title using YouTube's actual video data
+      if (titleCorrectedForRef.current !== data.song.id) {
+        try {
+          const videoData = player.getVideoData();
+          if (videoData && videoData.title) {
+            titleCorrectedForRef.current = data.song.id;
+            // Parse "Artist - Title" or just use title as-is
+            const parts = videoData.title.split(' - ');
+            const ytTitle = parts.length >= 2 ? parts.slice(1).join(' - ').trim() : videoData.title;
+            const ytArtist = parts.length >= 2 ? parts[0].trim() : (videoData.author || data.song.artist);
+            // Clean common YouTube suffixes
+            const cleanTitle = ytTitle
+              .replace(/\s*\(Official\s*(Music\s*)?Video\)/i, '')
+              .replace(/\s*\[Official\s*(Music\s*)?Video\]/i, '')
+              .replace(/\s*\(Official\s*Audio\)/i, '')
+              .replace(/\s*\[Official\s*Audio\]/i, '')
+              .replace(/\s*\(Lyrics?\)/i, '')
+              .replace(/\s*\[Lyrics?\]/i, '')
+              .replace(/\s*\(HD\)/i, '')
+              .trim();
+            const cleanArtist = ytArtist
+              .replace(/\s*-\s*Topic$/i, '')
+              .replace(/VEVO$/i, '')
+              .trim();
+            if (cleanTitle) {
+              setState(prev => ({
+                ...prev,
+                currentSong: prev.currentSong ? {
+                  ...prev.currentSong,
+                  title: cleanTitle,
+                  artist: cleanArtist || prev.currentSong.artist,
+                } : prev.currentSong,
+              }));
+              console.log(`[zo-fm] Title corrected: "${cleanTitle}" by "${cleanArtist}"`);
+            }
+          }
+        } catch {
+          // getVideoData may not be available in all embeds
+        }
+      }
+
+      // At ~25s remaining: pre-fetch DJ clip (more time for longer scripts)
+      if (remaining < 26 && remaining > 5 && prefetchStartedForRef.current !== data.song.id) {
         prefetchStartedForRef.current = data.song.id;
         console.log(`[zo-fm] ${Math.round(remaining)}s remaining — pre-fetching DJ clip`);
         generateDJClip(data.slot, data.song, data.nextSong).then(result => {
@@ -387,14 +432,14 @@ export function useRadioSync() {
         });
       }
 
-      // At ~10s remaining: start fading out AND start DJ clip (overlap!)
+      // At ~15s remaining: start fading out AND start DJ clip (overlap!)
       // The DJ talks over the fading tail of the current song
-      if (remaining < 11 && remaining > 2 && crossfadeStartedForRef.current !== data.song.id) {
+      if (remaining < 16 && remaining > 2 && crossfadeStartedForRef.current !== data.song.id) {
         crossfadeStartedForRef.current = data.song.id;
         console.log(`[zo-fm] ${Math.round(remaining)}s remaining — starting crossfade`);
 
         // Start fading out the current song
-        fadeVolume(15, 4000); // Fade to 15% over 4s — music becomes a bed for DJ
+        fadeVolume(15, 5000); // Fade to 15% over 5s — music becomes a bed for DJ
 
         // Trigger the full crossfade (DJ over fading music, then next song fades in)
         performCrossfade();
@@ -544,6 +589,20 @@ export function useRadioSync() {
     });
   }, [fetchNowPlaying, syncToServerFn, startMonitor, generateDJClip, fadeVolume, createDJAudio, getAudioContext]);
 
+  // Handle YouTube video ending — safety net if crossfade didn't trigger in time
+  const onPlayerEnd = useCallback(() => {
+    if (!isActiveRef.current) return;
+
+    // If a crossfade is already in progress, it will handle the next song
+    if (transitionInProgressRef.current) {
+      console.log('[zo-fm] Video ended — crossfade already in progress');
+      return;
+    }
+
+    console.log('[zo-fm] Video ended naturally — triggering crossfade as fallback');
+    performCrossfade();
+  }, [performCrossfade]);
+
   const onPlayerReady = useCallback((event: { target: YT.Player }) => {
     playerRef.current = event.target;
     playerReadyRef.current = true;
@@ -571,6 +630,7 @@ export function useRadioSync() {
     tuneIn,
     playerRef,
     onPlayerReady,
+    onPlayerEnd,
   };
 }
 

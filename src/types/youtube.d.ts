@@ -12,6 +12,7 @@ declare namespace YT {
     getDuration(): number;
     getCurrentTime(): number;
     getPlayerState(): number;
+    getVideoData(): { video_id: string; title: string; author: string };
   }
 
   enum PlayerState {
