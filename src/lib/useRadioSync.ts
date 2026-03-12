@@ -53,9 +53,6 @@ export function useRadioSync() {
   // Pre-fetched DJ clip for next transition
   const prefetchedDJRef = useRef<{ audioBlob: Blob; script: string; forSongId: string } | null>(null);
 
-  // Track which video ID we already corrected the title for
-  const titleCorrectedForRef = useRef<string | null>(null);
-
   // Latest now-playing data
   const latestDataRef = useRef<NowPlayingData | null>(null);
 
@@ -245,6 +242,9 @@ export function useRadioSync() {
 
         // Step 3: When DJ is ~75% done, load next song at volume 0
         // This creates the overlap — next song starts under DJ's voice
+        // Use data.nextSong directly — server fetch can return stale data
+        // if YouTube's actual duration differs from DB duration
+        const nextSong = data.nextSong;
         const loadNextSongUnderDJ = () => {
           if (!djAudio.duration || !isActiveRef.current) return;
 
@@ -256,20 +256,25 @@ export function useRadioSync() {
               clearInterval(checkInterval);
               const player = playerRef.current;
               if (player) {
-                // Fetch fresh seekTo right before loading
-                fetchNowPlaying().then(fresh => {
-                  if (!fresh || !isActiveRef.current) return;
-                  currentSongIdRef.current = fresh.song.id;
-                  latestDataRef.current = fresh;
-                  player.setVolume(0);
-                  player.loadVideoById({ videoId: fresh.song.id, startSeconds: fresh.seekTo });
-                  console.log('[zo-fm] Next song loaded under DJ voice');
+                currentSongIdRef.current = nextSong.id;
+                player.setVolume(0);
+                player.loadVideoById({ videoId: nextSong.id, startSeconds: 0 });
+                console.log('[zo-fm] Next song loaded under DJ voice');
 
-                  setState(prev => ({
-                    ...prev,
-                    currentSong: fresh.song,
-                    slot: fresh.slot,
-                  }));
+                setState(prev => ({
+                  ...prev,
+                  currentSong: {
+                    id: nextSong.id,
+                    title: nextSong.title,
+                    artist: nextSong.artist,
+                    mood: data.slot.mood,
+                    genre: prev.currentSong?.genre || '',
+                  },
+                }));
+
+                // Background sync to update latestDataRef for future transitions
+                fetchNowPlaying().then(fresh => {
+                  if (fresh) latestDataRef.current = fresh;
                 });
               }
             }
@@ -287,13 +292,26 @@ export function useRadioSync() {
       } else {
         // No DJ clip — just fade out and load next song
         await fadeVolume(0, 2000);
-        const fresh = await fetchNowPlaying();
-        if (fresh && isActiveRef.current && playerRef.current) {
-          currentSongIdRef.current = fresh.song.id;
-          latestDataRef.current = fresh;
+        const nextSong = data.nextSong;
+        if (isActiveRef.current && playerRef.current) {
+          currentSongIdRef.current = nextSong.id;
           playerRef.current.setVolume(0);
-          playerRef.current.loadVideoById({ videoId: fresh.song.id, startSeconds: fresh.seekTo });
-          setState(prev => ({ ...prev, currentSong: fresh.song, slot: fresh.slot }));
+          playerRef.current.loadVideoById({ videoId: nextSong.id, startSeconds: 0 });
+          setState(prev => ({
+            ...prev,
+            currentSong: {
+              id: nextSong.id,
+              title: nextSong.title,
+              artist: nextSong.artist,
+              mood: data.slot.mood,
+              genre: prev.currentSong?.genre || '',
+            },
+            slot: data.slot,
+          }));
+          // Background sync for future transitions
+          fetchNowPlaying().then(fresh => {
+            if (fresh) latestDataRef.current = fresh;
+          });
         }
       }
 
@@ -303,17 +321,21 @@ export function useRadioSync() {
       const player = playerRef.current;
       if (player) {
         // If next song wasn't loaded yet (DJ was very short), load it now
-        const fresh = latestDataRef.current;
-        if (fresh && currentSongIdRef.current !== fresh.song.id) {
-          // Re-fetch for accurate seekTo
-          const nowData = await fetchNowPlaying();
-          if (nowData && isActiveRef.current) {
-            currentSongIdRef.current = nowData.song.id;
-            latestDataRef.current = nowData;
-            player.setVolume(0);
-            player.loadVideoById({ videoId: nowData.song.id, startSeconds: nowData.seekTo });
-            setState(prev => ({ ...prev, currentSong: nowData.song, slot: nowData.slot }));
-          }
+        if (currentSongIdRef.current !== data.nextSong.id) {
+          currentSongIdRef.current = data.nextSong.id;
+          player.setVolume(0);
+          player.loadVideoById({ videoId: data.nextSong.id, startSeconds: 0 });
+          setState(prev => ({
+            ...prev,
+            currentSong: {
+              id: data.nextSong.id,
+              title: data.nextSong.title,
+              artist: data.nextSong.artist,
+              mood: data.slot.mood,
+              genre: prev.currentSong?.genre || '',
+            },
+            slot: data.slot,
+          }));
         }
 
         // Smooth fade in — the song is already playing silently
@@ -326,7 +348,6 @@ export function useRadioSync() {
       // Reset monitor flags for new song
       prefetchStartedForRef.current = null;
       crossfadeStartedForRef.current = null;
-      titleCorrectedForRef.current = null;
 
       // Schedule next poll
       const freshData = latestDataRef.current;
@@ -374,47 +395,6 @@ export function useRadioSync() {
 
       if (!ytDuration || ytDuration <= 0) return;
       const remaining = ytDuration - ytCurrent;
-
-      // Correct displayed title using YouTube's actual video data
-      if (titleCorrectedForRef.current !== data.song.id) {
-        try {
-          const videoData = player.getVideoData();
-          if (videoData && videoData.title) {
-            titleCorrectedForRef.current = data.song.id;
-            // Parse "Artist - Title" or just use title as-is
-            const parts = videoData.title.split(' - ');
-            const ytTitle = parts.length >= 2 ? parts.slice(1).join(' - ').trim() : videoData.title;
-            const ytArtist = parts.length >= 2 ? parts[0].trim() : (videoData.author || data.song.artist);
-            // Clean common YouTube suffixes
-            const cleanTitle = ytTitle
-              .replace(/\s*\(Official\s*(Music\s*)?Video\)/i, '')
-              .replace(/\s*\[Official\s*(Music\s*)?Video\]/i, '')
-              .replace(/\s*\(Official\s*Audio\)/i, '')
-              .replace(/\s*\[Official\s*Audio\]/i, '')
-              .replace(/\s*\(Lyrics?\)/i, '')
-              .replace(/\s*\[Lyrics?\]/i, '')
-              .replace(/\s*\(HD\)/i, '')
-              .trim();
-            const cleanArtist = ytArtist
-              .replace(/\s*-\s*Topic$/i, '')
-              .replace(/VEVO$/i, '')
-              .trim();
-            if (cleanTitle) {
-              setState(prev => ({
-                ...prev,
-                currentSong: prev.currentSong ? {
-                  ...prev.currentSong,
-                  title: cleanTitle,
-                  artist: cleanArtist || prev.currentSong.artist,
-                } : prev.currentSong,
-              }));
-              console.log(`[zo-fm] Title corrected: "${cleanTitle}" by "${cleanArtist}"`);
-            }
-          }
-        } catch {
-          // getVideoData may not be available in all embeds
-        }
-      }
 
       // At ~25s remaining: pre-fetch DJ clip (more time for longer scripts)
       if (remaining < 26 && remaining > 5 && prefetchStartedForRef.current !== data.song.id) {
