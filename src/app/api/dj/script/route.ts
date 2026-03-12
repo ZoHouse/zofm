@@ -13,7 +13,7 @@ const TRANSITION_MODES = [
   { type: 'thin-wall', weight: 3, prompt: 'The wall between worlds is thin right now. Describe what this exact moment feels like from Zo World — the same time of day, the same light, but in a reality where everyone followed their heart. Then the next song scores it.' },
   { type: 'song-bridge', weight: 3, prompt: 'The song that just played opened something. React to it — not as a critic, but as someone from a world where that song means something specific. What did it unlock? Where does the next song take it?' },
   { type: 'zo-truth', weight: 3, prompt: 'Share one truth from Zo World. Something you have learned from living in a reality where people follow their hearts. Not advice — just a truth. Then let the next song land.' },
-  { type: 'signal-check', weight: 2, prompt: 'Sometimes the transmission is just a signal check. Brief. A song title. A "Zo Zo Zo." A breath. Under 15 words. The music does the rest.' },
+  { type: 'signal-check', weight: 1, prompt: 'A brief signal check. A sentence or two — a feeling, a "Zo Zo Zo," a moment. Not a full transmission, but not throwaway either. 1-2 sentences.' },
 ];
 
 const INTRO_MODES = [
@@ -127,7 +127,7 @@ export async function POST(req: Request) {
       }
     } catch { /* non-critical */ }
 
-    const maxTokens = transitionType === 'quick-drop' ? 40 : 150;
+    const maxTokens = transitionType === 'signal-check' ? 80 : 250;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
