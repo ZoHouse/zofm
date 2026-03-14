@@ -50,11 +50,22 @@ export function useRadioSync() {
   const prefetchStartedForRef = useRef<string | null>(null);
   const crossfadeStartedForRef = useRef<string | null>(null);
 
+  // Server-based fallback timer (in case YouTube getDuration fails or tab is backgrounded)
+  const serverFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref to performCrossfade so the fallback timer can call it without circular deps
+  const performCrossfadeRef = useRef<() => void>(() => {});
+
   // Pre-fetched DJ clip for next transition
   const prefetchedDJRef = useRef<{ audioBlob: Blob; script: string; forSongId: string } | null>(null);
 
   // Latest now-playing data
   const latestDataRef = useRef<NowPlayingData | null>(null);
+
+  // Grace period after crossfade — don't let polls overwrite song info
+  const crossfadeCompletedAtRef = useRef<number>(0);
+
+  // Track which songs we've already reported duration corrections for
+  const durationReportedForRef = useRef<Set<string>>(new Set());
 
   const fetchNowPlaying = useCallback(async (): Promise<NowPlayingData | null> => {
     try {
@@ -115,79 +126,156 @@ export function useRadioSync() {
     });
   }, []);
 
-  // Get or create AudioContext
-  const getAudioContext = useCallback(() => {
+  // Get or create AudioContext — always ensure it's running
+  const ensureAudioContext = useCallback(async () => {
     if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
       audioCtxRef.current = new AudioContext();
     }
     if (audioCtxRef.current.state === 'suspended') {
-      audioCtxRef.current.resume().catch(() => {});
+      try {
+        await audioCtxRef.current.resume();
+        console.log('[zo-fm] AudioContext resumed from suspended');
+      } catch (e) {
+        console.warn('[zo-fm] AudioContext resume failed:', e);
+      }
     }
     return audioCtxRef.current;
   }, []);
 
   // Play DJ audio blob, returns the Audio element so caller can track progress
-  const createDJAudio = useCallback((blob: Blob): { audio: HTMLAudioElement; done: Promise<void> } => {
+  const createDJAudio = useCallback(async (blob: Blob): Promise<{ audio: HTMLAudioElement; done: Promise<void> }> => {
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
     audioRef.current = audio;
     audio.volume = 1.0;
 
+    // Ensure AudioContext is running before connecting
     try {
-      const ctx = getAudioContext();
+      const ctx = await ensureAudioContext();
+      console.log(`[zo-fm] AudioContext state: ${ctx.state}`);
       const source = ctx.createMediaElementSource(audio);
       const gain = ctx.createGain();
       gain.gain.value = 2.5;
       source.connect(gain);
       gain.connect(ctx.destination);
     } catch (e) {
-      console.warn('[zo-fm] Web Audio gain fallback:', e);
+      // Fallback: play without Web Audio gain boost — audio still works through default output
+      console.warn('[zo-fm] Web Audio gain fallback, playing direct:', e);
     }
 
     const done = new Promise<void>((resolve) => {
-      audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
-      audio.onerror = (e) => { console.error('[zo-fm] DJ audio error:', e); URL.revokeObjectURL(url); resolve(); };
-      audio.play().catch((e) => { console.error('[zo-fm] DJ play blocked:', e); URL.revokeObjectURL(url); resolve(); });
+      audio.onended = () => {
+        console.log('[zo-fm] DJ audio ended naturally');
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      audio.onerror = (e) => {
+        console.error('[zo-fm] DJ audio playback error:', e);
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      audio.play().then(() => {
+        console.log('[zo-fm] DJ audio playing');
+      }).catch((e) => {
+        console.error('[zo-fm] DJ audio play() rejected:', e);
+        URL.revokeObjectURL(url);
+        resolve();
+      });
     });
 
     return { audio, done };
-  }, [getAudioContext]);
+  }, [ensureAudioContext]);
 
-  // Generate DJ script + TTS
+  // Generate DJ script + TTS (with retry)
+  const generateDJClipOnce = useCallback(async (
+    slot: NowPlayingData['slot'],
+    previousSong: { title: string; artist: string },
+    nextSong: { id?: string; title: string; artist: string },
+  ): Promise<{ blob: Blob; script: string } | null> => {
+    const t0 = Date.now();
+    const scriptRes = await fetch('/api/dj/script', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mood: slot.mood,
+        previousSong,
+        nextSong,
+        djName: slot.djName,
+        djStyle: getDJStyle(slot.mood),
+      }),
+    });
+    if (!scriptRes.ok) {
+      const errBody = await scriptRes.text().catch(() => '');
+      console.error(`[zo-fm] DJ script failed: HTTP ${scriptRes.status} — ${errBody}`);
+      return null;
+    }
+    const { script } = await scriptRes.json();
+    console.log(`[zo-fm] DJ script generated in ${Date.now() - t0}ms (${script.length} chars)`);
+
+    const t1 = Date.now();
+    const ttsRes = await fetch('/api/dj/speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: script, voice: slot.voice }),
+    });
+    if (!ttsRes.ok) {
+      const errBody = await ttsRes.text().catch(() => '');
+      console.error(`[zo-fm] DJ TTS failed: HTTP ${ttsRes.status} — ${errBody}`);
+      return null;
+    }
+
+    const blob = await ttsRes.blob();
+    console.log(`[zo-fm] DJ TTS generated in ${Date.now() - t1}ms (${blob.size} bytes)`);
+    return { blob, script };
+  }, []);
+
   const generateDJClip = useCallback(async (
     slot: NowPlayingData['slot'],
     previousSong: { title: string; artist: string },
     nextSong: { id?: string; title: string; artist: string },
   ): Promise<{ blob: Blob; script: string } | null> => {
     try {
-      const scriptRes = await fetch('/api/dj/script', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mood: slot.mood,
-          previousSong,
-          nextSong,
-          djName: slot.djName,
-          djStyle: getDJStyle(slot.mood),
-        }),
-      });
-      if (!scriptRes.ok) return null;
-      const { script } = await scriptRes.json();
+      const result = await generateDJClipOnce(slot, previousSong, nextSong);
+      if (result) return result;
 
-      const ttsRes = await fetch('/api/dj/speak', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: script, voice: slot.voice }),
-      });
-      if (!ttsRes.ok) return null;
-
-      const blob = await ttsRes.blob();
-      return { blob, script };
+      // Retry once after a brief pause
+      console.log('[zo-fm] DJ generation failed, retrying...');
+      await new Promise(r => setTimeout(r, 500));
+      return await generateDJClipOnce(slot, previousSong, nextSong);
     } catch (err) {
-      console.error('[zo-fm] DJ generation failed:', err);
-      return null;
+      console.error('[zo-fm] DJ generation error:', err);
+      // Retry once on network errors
+      try {
+        console.log('[zo-fm] DJ generation threw, retrying...');
+        await new Promise(r => setTimeout(r, 500));
+        return await generateDJClipOnce(slot, previousSong, nextSong);
+      } catch (retryErr) {
+        console.error('[zo-fm] DJ generation retry also failed:', retryErr);
+        return null;
+      }
     }
-  }, []);
+  }, [generateDJClipOnce]);
+
+  // Server-based fallback: schedule a crossfade based on server's duration
+  // This fires if the YouTube-based monitor misses the window (tab backgrounded, getDuration=0, etc.)
+  const scheduleServerFallback = useCallback((remainingSeconds: number) => {
+    if (serverFallbackTimerRef.current) clearTimeout(serverFallbackTimerRef.current);
+    // Fire 12s before server thinks the song ends — gives time for DJ generation
+    const fallbackMs = Math.max((remainingSeconds - 12) * 1000, 5000);
+    serverFallbackTimerRef.current = setTimeout(() => {
+      if (!isActiveRef.current || transitionInProgressRef.current) return;
+      // Only trigger if the YouTube monitor hasn't already started a crossfade
+      if (crossfadeStartedForRef.current) return;
+      console.log('[zo-fm] Server fallback timer fired — monitor may have missed the window');
+      const data = latestDataRef.current;
+      if (data) {
+        crossfadeStartedForRef.current = currentSongIdRef.current || data.song.id;
+        fadeVolume(15, 5000);
+        performCrossfadeRef.current();
+      }
+    }, fallbackMs);
+    console.log(`[zo-fm] Server fallback scheduled in ${Math.round(fallbackMs / 1000)}s`);
+  }, [fadeVolume]);
 
   // ===== THE CROSSFADE =====
   // This is triggered by the playback monitor when the song is about to end.
@@ -238,7 +326,7 @@ export function useRadioSync() {
         setState(prev => ({ ...prev, djScript, status: 'dj-speaking' }));
         fadeVolume(8, 1000); // Duck music to 8% — still audible as a bed
 
-        const { audio: djAudio, done: djDone } = createDJAudio(djBlob);
+        const { audio: djAudio, done: djDone } = await createDJAudio(djBlob);
 
         // Step 3: When DJ is ~75% done, load next song at volume 0
         // This creates the overlap — next song starts under DJ's voice
@@ -272,9 +360,23 @@ export function useRadioSync() {
                   },
                 }));
 
-                // Background sync to update latestDataRef for future transitions
+                // Background sync — find our actual song in server's playlist
+                // to get correct nextSong for future transitions
                 fetchNowPlaying().then(fresh => {
-                  if (fresh) latestDataRef.current = fresh;
+                  if (fresh) {
+                    // If server agrees on current song, use its data
+                    // If not, still update but keep our song info
+                    if (fresh.song.id === nextSong.id) {
+                      latestDataRef.current = fresh;
+                    } else {
+                      // Server drifted — find our song in server's response
+                      // Keep fresh data but correct the song reference
+                      latestDataRef.current = {
+                        ...fresh,
+                        song: { id: nextSong.id, title: nextSong.title, artist: nextSong.artist, mood: data.slot.mood, genre: '' },
+                      };
+                    }
+                  }
                 });
               }
             }
@@ -310,7 +412,16 @@ export function useRadioSync() {
           }));
           // Background sync for future transitions
           fetchNowPlaying().then(fresh => {
-            if (fresh) latestDataRef.current = fresh;
+            if (fresh) {
+              if (fresh.song.id === nextSong.id) {
+                latestDataRef.current = fresh;
+              } else {
+                latestDataRef.current = {
+                  ...fresh,
+                  song: { id: nextSong.id, title: nextSong.title, artist: nextSong.artist, mood: data.slot.mood, genre: '' },
+                };
+              }
+            }
           });
         }
       }
@@ -345,16 +456,20 @@ export function useRadioSync() {
 
       setState(prev => ({ ...prev, status: 'playing', djScript: '' }));
 
+      // Mark crossfade completion — polls won't overwrite song info for 10s
+      crossfadeCompletedAtRef.current = Date.now();
+
       // Reset monitor flags for new song
       prefetchStartedForRef.current = null;
       crossfadeStartedForRef.current = null;
 
-      // Schedule next poll
+      // Schedule next poll + server fallback timer for next crossfade
       const freshData = latestDataRef.current;
       if (freshData) {
         const remaining = freshData.duration - freshData.seekTo;
         if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
         pollTimerRef.current = setTimeout(syncToServerFn, Math.min(remaining * 1000 + 2000, 30000));
+        scheduleServerFallback(remaining);
       }
     } catch (err) {
       console.error('[zo-fm] Crossfade failed:', err);
@@ -370,7 +485,10 @@ export function useRadioSync() {
     } finally {
       transitionInProgressRef.current = false;
     }
-  }, [fadeVolume, createDJAudio, generateDJClip, fetchNowPlaying]);
+  }, [fadeVolume, createDJAudio, generateDJClip, fetchNowPlaying, scheduleServerFallback]);
+
+  // Keep performCrossfadeRef in sync so server fallback timer can call it
+  performCrossfadeRef.current = performCrossfade;
 
   // Playback monitor — checks YouTube's actual remaining time every second
   // This is the BRAIN — it triggers pre-fetch, fade-out, and crossfade
@@ -394,11 +512,24 @@ export function useRadioSync() {
       }
 
       if (!ytDuration || ytDuration <= 0) return;
+
+      // Report duration correction to server if YouTube's actual duration differs
+      const actualSongId = currentSongIdRef.current || data.song.id;
+      if (!durationReportedForRef.current.has(actualSongId) && Math.abs(ytDuration - data.duration) > 2) {
+        durationReportedForRef.current.add(actualSongId);
+        fetch('/api/radio/duration-correction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ songId: actualSongId, actualDuration: ytDuration }),
+        }).catch(() => { /* non-critical */ });
+        console.log(`[zo-fm] Duration correction: ${actualSongId} DB=${data.duration}s YT=${Math.round(ytDuration)}s`);
+      }
+
       const remaining = ytDuration - ytCurrent;
 
       // At ~25s remaining: pre-fetch DJ clip (more time for longer scripts)
-      if (remaining < 26 && remaining > 5 && prefetchStartedForRef.current !== data.song.id) {
-        prefetchStartedForRef.current = data.song.id;
+      if (remaining < 26 && remaining > 5 && prefetchStartedForRef.current !== actualSongId) {
+        prefetchStartedForRef.current = actualSongId;
         console.log(`[zo-fm] ${Math.round(remaining)}s remaining — pre-fetching DJ clip`);
         generateDJClip(data.slot, data.song, data.nextSong).then(result => {
           if (result && isActiveRef.current) {
@@ -414,8 +545,8 @@ export function useRadioSync() {
 
       // At ~15s remaining: start fading out AND start DJ clip (overlap!)
       // The DJ talks over the fading tail of the current song
-      if (remaining < 16 && remaining > 2 && crossfadeStartedForRef.current !== data.song.id) {
-        crossfadeStartedForRef.current = data.song.id;
+      if (remaining < 16 && remaining > 2 && crossfadeStartedForRef.current !== actualSongId) {
+        crossfadeStartedForRef.current = actualSongId;
         console.log(`[zo-fm] ${Math.round(remaining)}s remaining — starting crossfade`);
 
         // Start fading out the current song
@@ -439,9 +570,18 @@ export function useRadioSync() {
     const player = playerRef.current;
     if (!player) return;
 
+    // Grace period: after a crossfade, the client knows better than the server
+    // what's playing. Don't let stale server data overwrite the display.
+    const inGracePeriod = Date.now() - crossfadeCompletedAtRef.current < 10000;
+
     if (currentSongIdRef.current !== data.song.id) {
-      if (transitionInProgressRef.current) {
-        // Crossfade is already handling the transition — don't interfere
+      if (transitionInProgressRef.current || inGracePeriod) {
+        // Crossfade is handling the transition or just finished — don't interfere
+        // But still update latestDataRef with corrected song info for future transitions
+        if (inGracePeriod && currentSongIdRef.current) {
+          // Override server's stale position with what we're actually playing
+          latestDataRef.current = { ...data, song: { ...data.song, id: currentSongIdRef.current } };
+        }
         return;
       }
 
@@ -468,28 +608,31 @@ export function useRadioSync() {
           error: null,
         }));
 
-        // Play intro DJ clip (duck style)
-        if (data.seekTo <= 15) {
-          djPlayedForRef.current = data.song.id;
-          generateDJClip(data.slot, data.previousSong, data.song).then(async result => {
-            if (!result || !isActiveRef.current) return;
-            setState(prev => ({ ...prev, djScript: result.script, status: 'dj-speaking' }));
-            await fadeVolume(12, 600);
-            const { done } = createDJAudio(result.blob);
-            await done;
-            await new Promise(r => setTimeout(r, 400));
-            await fadeVolume(80, 1000);
-            if (isActiveRef.current) {
-              setState(prev => ({ ...prev, status: 'playing', djScript: '' }));
-            }
-          });
-        }
+        // Always play intro DJ clip on first tune-in
+        djPlayedForRef.current = data.song.id;
+        generateDJClip(data.slot, data.previousSong, data.song).then(async result => {
+          if (!result || !isActiveRef.current) return;
+          setState(prev => ({ ...prev, djScript: result.script, status: 'dj-speaking' }));
+          await fadeVolume(12, 600);
+          const { audio: _djAudio, done } = await createDJAudio(result.blob);
+          await done;
+          await new Promise(r => setTimeout(r, 400));
+          await fadeVolume(80, 1000);
+          if (isActiveRef.current) {
+            setState(prev => ({ ...prev, status: 'playing', djScript: '' }));
+          }
+        });
+
+        // Schedule server fallback for first song
+        const firstRemaining = data.duration - data.seekTo;
+        scheduleServerFallback(firstRemaining);
       }
     } else {
-      // Same song — just update state
+      // Same song — update slot/status but DON'T overwrite currentSong
+      // The crossfade or initial load already set currentSong correctly.
+      // Server's song data can be stale due to duration drift.
       setState(prev => ({
         ...prev,
-        currentSong: data.song,
         slot: data.slot,
         status: prev.status === 'dj-speaking' ? 'dj-speaking' : 'playing',
         error: null,
@@ -500,14 +643,14 @@ export function useRadioSync() {
     const nextCheckMs = Math.min(remainingSeconds * 1000 + 2000, 30000);
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     pollTimerRef.current = setTimeout(syncToServerFn, nextCheckMs);
-  }, [fetchNowPlaying, performCrossfade, startMonitor, generateDJClip, fadeVolume, createDJAudio]);
+  }, [fetchNowPlaying, performCrossfade, startMonitor, generateDJClip, fadeVolume, createDJAudio, scheduleServerFallback]);
 
   // tuneIn — called from click handler
   const tuneIn = useCallback(() => {
     isActiveRef.current = true;
 
     // Create AudioContext in user gesture context
-    try { getAudioContext(); } catch { /* ok */ }
+    ensureAudioContext().catch(() => {});
 
     const player = playerRef.current;
     const data = prefetchedRef.current;
@@ -536,25 +679,24 @@ export function useRadioSync() {
 
     startMonitor();
 
-    // Intro DJ clip (duck style)
-    if (adjustedSeek <= 15) {
-      djPlayedForRef.current = data.song.id;
-      generateDJClip(data.slot, data.previousSong, data.song).then(async result => {
-        if (!result || !isActiveRef.current) return;
-        setState(prev => ({ ...prev, djScript: result.script, status: 'dj-speaking' }));
-        await fadeVolume(12, 600);
-        const { done } = createDJAudio(result.blob);
-        await done;
-        await new Promise(r => setTimeout(r, 400));
-        await fadeVolume(80, 1000);
-        if (isActiveRef.current) {
-          setState(prev => ({ ...prev, status: 'playing', djScript: '' }));
-        }
-      });
-    }
+    // Always play intro DJ clip — Suki greets every listener
+    djPlayedForRef.current = data.song.id;
+    generateDJClip(data.slot, data.previousSong, data.song).then(async result => {
+      if (!result || !isActiveRef.current) return;
+      setState(prev => ({ ...prev, djScript: result.script, status: 'dj-speaking' }));
+      await fadeVolume(12, 600);
+      const { audio: _djAudio, done } = await createDJAudio(result.blob);
+      await done;
+      await new Promise(r => setTimeout(r, 400));
+      await fadeVolume(80, 1000);
+      if (isActiveRef.current) {
+        setState(prev => ({ ...prev, status: 'playing', djScript: '' }));
+      }
+    });
 
     const remaining = data.duration - adjustedSeek;
     pollTimerRef.current = setTimeout(syncToServerFn, Math.min(remaining * 1000 + 2000, 30000));
+    scheduleServerFallback(remaining);
 
     fetchNowPlaying().then(fresh => {
       if (!fresh || !isActiveRef.current) return;
@@ -567,7 +709,7 @@ export function useRadioSync() {
         setState(prev => ({ ...prev, currentSong: fresh.song, slot: fresh.slot }));
       }
     });
-  }, [fetchNowPlaying, syncToServerFn, startMonitor, generateDJClip, fadeVolume, createDJAudio, getAudioContext]);
+  }, [fetchNowPlaying, syncToServerFn, startMonitor, generateDJClip, fadeVolume, createDJAudio, ensureAudioContext, scheduleServerFallback]);
 
   // Handle YouTube video ending — safety net if crossfade didn't trigger in time
   const onPlayerEnd = useCallback(() => {
@@ -595,6 +737,7 @@ export function useRadioSync() {
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
       if (monitorRef.current) clearInterval(monitorRef.current);
       if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+      if (serverFallbackTimerRef.current) clearTimeout(serverFallbackTimerRef.current);
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;

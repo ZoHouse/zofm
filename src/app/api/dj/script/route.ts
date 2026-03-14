@@ -127,7 +127,7 @@ export async function POST(req: Request) {
       }
     } catch { /* non-critical */ }
 
-    const maxTokens = transitionType === 'signal-check' ? 80 : 250;
+    const maxTokens = transitionType === 'signal-check' ? 60 : 120;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
