@@ -36,7 +36,6 @@ export function useRadioSync() {
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const djPlayedForRef = useRef<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
   const isActiveRef = useRef(false);
   const prefetchedRef = useRef<NowPlayingData | null>(null);
   const playerReadyRef = useRef(false);
@@ -126,42 +125,14 @@ export function useRadioSync() {
     });
   }, []);
 
-  // Get or create AudioContext — always ensure it's running
-  const ensureAudioContext = useCallback(async () => {
-    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-      audioCtxRef.current = new AudioContext();
-    }
-    if (audioCtxRef.current.state === 'suspended') {
-      try {
-        await audioCtxRef.current.resume();
-        console.log('[zo-fm] AudioContext resumed from suspended');
-      } catch (e) {
-        console.warn('[zo-fm] AudioContext resume failed:', e);
-      }
-    }
-    return audioCtxRef.current;
-  }, []);
-
-  // Play DJ audio blob, returns the Audio element so caller can track progress
+  // Play DJ audio blob — plain HTML5 Audio, no WebAudio API
+  // WebAudio's createMediaElementSource permanently captures audio output
+  // and silently dies when AudioContext suspends outside user gesture context
   const createDJAudio = useCallback(async (blob: Blob): Promise<{ audio: HTMLAudioElement; done: Promise<void> }> => {
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
     audioRef.current = audio;
     audio.volume = 1.0;
-
-    // Ensure AudioContext is running before connecting
-    try {
-      const ctx = await ensureAudioContext();
-      console.log(`[zo-fm] AudioContext state: ${ctx.state}`);
-      const source = ctx.createMediaElementSource(audio);
-      const gain = ctx.createGain();
-      gain.gain.value = 2.5;
-      source.connect(gain);
-      gain.connect(ctx.destination);
-    } catch (e) {
-      // Fallback: play without Web Audio gain boost — audio still works through default output
-      console.warn('[zo-fm] Web Audio gain fallback, playing direct:', e);
-    }
 
     const done = new Promise<void>((resolve) => {
       audio.onended = () => {
@@ -184,7 +155,7 @@ export function useRadioSync() {
     });
 
     return { audio, done };
-  }, [ensureAudioContext]);
+  }, []);
 
   // Generate DJ script + TTS (with retry)
   const generateDJClipOnce = useCallback(async (
@@ -256,17 +227,44 @@ export function useRadioSync() {
     }
   }, [generateDJClipOnce]);
 
-  // Server-based fallback: schedule a crossfade based on server's duration
-  // This fires if the YouTube-based monitor misses the window (tab backgrounded, getDuration=0, etc.)
+  // Server-based timer: schedule DJ pre-fetch and crossfade based on server's duration
+  // This is the PRIMARY trigger for background tabs where setInterval is throttled to ~1/min
+  // Two timers: one for pre-fetch (~25s before end), one for crossfade (~15s before end)
+  const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const scheduleServerFallback = useCallback((remainingSeconds: number) => {
     if (serverFallbackTimerRef.current) clearTimeout(serverFallbackTimerRef.current);
-    // Fire 12s before server thinks the song ends — gives time for DJ generation
-    const fallbackMs = Math.max((remainingSeconds - 12) * 1000, 5000);
+    if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current);
+
+    // Schedule DJ pre-fetch at ~25s before end
+    const prefetchMs = Math.max((remainingSeconds - 25) * 1000, 2000);
+    prefetchTimerRef.current = setTimeout(() => {
+      if (!isActiveRef.current || transitionInProgressRef.current) return;
+      if (prefetchStartedForRef.current === (currentSongIdRef.current || latestDataRef.current?.song.id)) return;
+      const data = latestDataRef.current;
+      if (!data) return;
+      const songId = currentSongIdRef.current || data.song.id;
+      prefetchStartedForRef.current = songId;
+      console.log('[zo-fm] Server timer: pre-fetching DJ clip');
+      generateDJClip(data.slot, data.song, data.nextSong).then(result => {
+        if (result && isActiveRef.current) {
+          prefetchedDJRef.current = {
+            audioBlob: result.blob,
+            script: result.script,
+            forSongId: data.nextSong.id,
+          };
+          console.log('[zo-fm] Server timer: DJ clip pre-fetched and ready');
+        }
+      });
+    }, prefetchMs);
+
+    // Schedule crossfade at ~15s before end
+    const fallbackMs = Math.max((remainingSeconds - 15) * 1000, 5000);
     serverFallbackTimerRef.current = setTimeout(() => {
       if (!isActiveRef.current || transitionInProgressRef.current) return;
       // Only trigger if the YouTube monitor hasn't already started a crossfade
       if (crossfadeStartedForRef.current) return;
-      console.log('[zo-fm] Server fallback timer fired — monitor may have missed the window');
+      console.log('[zo-fm] Server timer fired — starting crossfade');
       const data = latestDataRef.current;
       if (data) {
         crossfadeStartedForRef.current = currentSongIdRef.current || data.song.id;
@@ -274,8 +272,8 @@ export function useRadioSync() {
         performCrossfadeRef.current();
       }
     }, fallbackMs);
-    console.log(`[zo-fm] Server fallback scheduled in ${Math.round(fallbackMs / 1000)}s`);
-  }, [fadeVolume]);
+    console.log(`[zo-fm] Server timers: prefetch in ${Math.round(prefetchMs / 1000)}s, crossfade in ${Math.round(fallbackMs / 1000)}s`);
+  }, [fadeVolume, generateDJClip]);
 
   // ===== THE CROSSFADE =====
   // This is triggered by the playback monitor when the song is about to end.
@@ -609,8 +607,9 @@ export function useRadioSync() {
         }));
 
         // Always play intro DJ clip on first tune-in
+        // Pass null as previousSong so the script API triggers intro mode
         djPlayedForRef.current = data.song.id;
-        generateDJClip(data.slot, data.previousSong, data.song).then(async result => {
+        generateDJClip(data.slot, null as unknown as { title: string; artist: string }, data.song).then(async result => {
           if (!result || !isActiveRef.current) return;
           setState(prev => ({ ...prev, djScript: result.script, status: 'dj-speaking' }));
           await fadeVolume(12, 600);
@@ -649,9 +648,6 @@ export function useRadioSync() {
   const tuneIn = useCallback(() => {
     isActiveRef.current = true;
 
-    // Create AudioContext in user gesture context
-    ensureAudioContext().catch(() => {});
-
     const player = playerRef.current;
     const data = prefetchedRef.current;
 
@@ -680,8 +676,9 @@ export function useRadioSync() {
     startMonitor();
 
     // Always play intro DJ clip — Suki greets every listener
+    // Pass null as previousSong so the script API triggers intro mode
     djPlayedForRef.current = data.song.id;
-    generateDJClip(data.slot, data.previousSong, data.song).then(async result => {
+    generateDJClip(data.slot, null as unknown as { title: string; artist: string }, data.song).then(async result => {
       if (!result || !isActiveRef.current) return;
       setState(prev => ({ ...prev, djScript: result.script, status: 'dj-speaking' }));
       await fadeVolume(12, 600);
@@ -709,7 +706,7 @@ export function useRadioSync() {
         setState(prev => ({ ...prev, currentSong: fresh.song, slot: fresh.slot }));
       }
     });
-  }, [fetchNowPlaying, syncToServerFn, startMonitor, generateDJClip, fadeVolume, createDJAudio, ensureAudioContext, scheduleServerFallback]);
+  }, [fetchNowPlaying, syncToServerFn, startMonitor, generateDJClip, fadeVolume, createDJAudio, scheduleServerFallback]);
 
   // Handle YouTube video ending — safety net if crossfade didn't trigger in time
   const onPlayerEnd = useCallback(() => {
@@ -741,9 +738,6 @@ export function useRadioSync() {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
-      }
-      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-        audioCtxRef.current.close().catch(() => {});
       }
     };
   }, []);

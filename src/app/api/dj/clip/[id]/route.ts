@@ -11,7 +11,7 @@ export async function GET(
     return new Response('Not found', { status: 404 });
   }
 
-  return new Response(clip.audio, {
+  return new Response(new Uint8Array(clip.audio), {
     headers: {
       'Content-Type': 'audio/mpeg',
       'Content-Length': clip.audio.length.toString(),
