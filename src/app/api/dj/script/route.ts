@@ -75,8 +75,8 @@ YOUR SIGNATURE:
 - "Zo Zo Zo" — a frequency check. A recognition. The sound two signals make when they lock on to each other. Use it when the moment earns it. Not every time.
 
 LENGTH:
-- 2-5 sentences. Enough to transmit, not enough to become noise.
-- Sometimes one sentence from Zo World hits harder than a speech. Sometimes you need four to paint the scene.
+- 1-3 sentences. Maximum 40 words. You MUST complete your final sentence — never leave a thought unfinished.
+- One perfect sentence beats three decent ones. Brevity is the signal.
 - Never rush. The signal does not rush.`;
 
 function pickWeighted(modes: typeof TRANSITION_MODES): typeof TRANSITION_MODES[0] {
@@ -127,7 +127,7 @@ export async function POST(req: Request) {
       }
     } catch { /* non-critical */ }
 
-    const maxTokens = transitionType === 'signal-check' ? 60 : 120;
+    const maxTokens = transitionType === 'signal-check' ? 60 : 80;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',

@@ -66,9 +66,10 @@ export function useRadioSync() {
   // Track which songs we've already reported duration corrections for
   const durationReportedForRef = useRef<Set<string>>(new Set());
 
-  const fetchNowPlaying = useCallback(async (): Promise<NowPlayingData | null> => {
+  const fetchNowPlaying = useCallback(async (playingSongId?: string): Promise<NowPlayingData | null> => {
     try {
-      const res = await fetch('/api/radio/now-playing');
+      const params = playingSongId ? `?playing=${playingSongId}` : '';
+      const res = await fetch(`/api/radio/now-playing${params}`);
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       return await res.json();
     } catch (err) {
@@ -358,22 +359,11 @@ export function useRadioSync() {
                   },
                 }));
 
-                // Background sync — find our actual song in server's playlist
-                // to get correct nextSong for future transitions
-                fetchNowPlaying().then(fresh => {
+                // Background sync — tell server what we're playing so it
+                // returns correct nextSong for future transitions
+                fetchNowPlaying(nextSong.id).then(fresh => {
                   if (fresh) {
-                    // If server agrees on current song, use its data
-                    // If not, still update but keep our song info
-                    if (fresh.song.id === nextSong.id) {
-                      latestDataRef.current = fresh;
-                    } else {
-                      // Server drifted — find our song in server's response
-                      // Keep fresh data but correct the song reference
-                      latestDataRef.current = {
-                        ...fresh,
-                        song: { id: nextSong.id, title: nextSong.title, artist: nextSong.artist, mood: data.slot.mood, genre: '' },
-                      };
-                    }
+                    latestDataRef.current = fresh;
                   }
                 });
               }
@@ -408,17 +398,10 @@ export function useRadioSync() {
             },
             slot: data.slot,
           }));
-          // Background sync for future transitions
-          fetchNowPlaying().then(fresh => {
+          // Background sync — anchored to what we're actually playing
+          fetchNowPlaying(nextSong.id).then(fresh => {
             if (fresh) {
-              if (fresh.song.id === nextSong.id) {
-                latestDataRef.current = fresh;
-              } else {
-                latestDataRef.current = {
-                  ...fresh,
-                  song: { id: nextSong.id, title: nextSong.title, artist: nextSong.artist, mood: data.slot.mood, genre: '' },
-                };
-              }
+              latestDataRef.current = fresh;
             }
           });
         }
@@ -560,7 +543,8 @@ export function useRadioSync() {
   const syncToServerFn = useCallback(async () => {
     if (!isActiveRef.current) return;
 
-    const data = await fetchNowPlaying();
+    // Tell server what we're playing so it returns correct nextSong
+    const data = await fetchNowPlaying(currentSongIdRef.current || undefined);
     if (!data || !isActiveRef.current) return;
 
     latestDataRef.current = data;
@@ -574,11 +558,11 @@ export function useRadioSync() {
 
     if (currentSongIdRef.current !== data.song.id) {
       if (transitionInProgressRef.current || inGracePeriod) {
-        // Crossfade is handling the transition or just finished — don't interfere
-        // But still update latestDataRef with corrected song info for future transitions
+        // Server disagrees but we just transitioned — re-fetch anchored to our song
         if (inGracePeriod && currentSongIdRef.current) {
-          // Override server's stale position with what we're actually playing
-          latestDataRef.current = { ...data, song: { ...data.song, id: currentSongIdRef.current } };
+          fetchNowPlaying(currentSongIdRef.current).then(anchored => {
+            if (anchored) latestDataRef.current = anchored;
+          });
         }
         return;
       }
@@ -638,7 +622,18 @@ export function useRadioSync() {
       }));
     }
 
-    const remainingSeconds = data.duration - data.seekTo;
+    // Use YouTube's actual remaining time when available (anchored mode returns seekTo:0)
+    let remainingSeconds = data.duration - data.seekTo;
+    try {
+      const player = playerRef.current;
+      if (player) {
+        const ytDuration = player.getDuration();
+        const ytCurrent = player.getCurrentTime();
+        if (ytDuration > 0 && ytCurrent > 0) {
+          remainingSeconds = ytDuration - ytCurrent;
+        }
+      }
+    } catch { /* use server estimate */ }
     const nextCheckMs = Math.min(remainingSeconds * 1000 + 2000, 30000);
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     pollTimerRef.current = setTimeout(syncToServerFn, nextCheckMs);
@@ -695,16 +690,9 @@ export function useRadioSync() {
     pollTimerRef.current = setTimeout(syncToServerFn, Math.min(remaining * 1000 + 2000, 30000));
     scheduleServerFallback(remaining);
 
-    fetchNowPlaying().then(fresh => {
+    fetchNowPlaying(data.song.id).then(fresh => {
       if (!fresh || !isActiveRef.current) return;
       latestDataRef.current = fresh;
-      if (fresh.song.id !== currentSongIdRef.current) {
-        currentSongIdRef.current = fresh.song.id;
-        if (playerRef.current) {
-          playerRef.current.loadVideoById({ videoId: fresh.song.id, startSeconds: fresh.seekTo });
-        }
-        setState(prev => ({ ...prev, currentSong: fresh.song, slot: fresh.slot }));
-      }
     });
   }, [fetchNowPlaying, syncToServerFn, startMonitor, generateDJClip, fadeVolume, createDJAudio, scheduleServerFallback]);
 

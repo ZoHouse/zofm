@@ -57,7 +57,10 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
 let lastRecordedSongId: string | null = null;
 
 // --- Core: compute what's playing right now ---
-function getNowPlaying() {
+// If `playingSongId` is provided, the client is telling us what it's actually
+// playing — we find that song in the playlist and return the correct next/prev
+// relative to it, eliminating duration-drift mismatches.
+function getNowPlaying(playingSongId?: string) {
   const slot = getCurrentSlot();
   const moodSongs = getSongsByMood(slot.mood);
 
@@ -69,7 +72,28 @@ function getNowPlaying() {
   const seed = getDaySeed() + slot.startHour;
   const playlist = seededShuffle(moodSongs, seed);
 
-  // Calculate how far into this slot we are (in seconds)
+  // --- Client-anchored mode: find client's song in playlist ---
+  if (playingSongId) {
+    const idx = playlist.findIndex(s => s.id === playingSongId);
+    if (idx !== -1) {
+      const song = playlist[idx];
+      const nextSong = playlist[(idx + 1) % playlist.length];
+      const previousSong = idx > 0 ? playlist[idx - 1] : playlist[playlist.length - 1];
+
+      // Record play (deduplicated)
+      if (lastRecordedSongId !== song.id) {
+        lastRecordedSongId = song.id;
+        try { recordPlay(song.id, slot.name, slot.mood, 0); } catch { /* non-critical */ }
+      }
+
+      // seekTo 0 — we don't know where the client is in the song,
+      // but the client doesn't use seekTo after initial load anyway
+      return buildResponse(song, 0, slot, nextSong, previousSong, idx, playlist.length);
+    }
+    // Song not in current slot's playlist (slot changed?), fall through to time-based
+  }
+
+  // --- Time-based mode: calculate from wall clock (used for initial sync) ---
   const ist = getISTDate();
   const slotStartHour = slot.startHour;
   const currentHour = ist.getHours();
@@ -130,8 +154,11 @@ function buildResponse(
   };
 }
 
-export async function GET() {
-  const data = getNowPlaying();
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const playingSongId = searchParams.get('playing') || undefined;
+
+  const data = getNowPlaying(playingSongId);
   if (!data) {
     return NextResponse.json({ error: 'No songs available' }, { status: 500 });
   }
