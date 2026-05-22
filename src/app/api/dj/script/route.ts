@@ -3,7 +3,10 @@ import OpenAI from 'openai';
 import { getRecentPlays, saveDJMemory, getDJMemories, getPlayStats } from '@/lib/db';
 
 function getClient() {
-  return new OpenAI();
+  return new OpenAI({
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey: process.env.OPENROUTER_API_KEY,
+  });
 }
 
 // Transition modes — what kind of transmission is this?
@@ -130,7 +133,7 @@ export async function POST(req: Request) {
     const maxTokens = transitionType === 'signal-check' ? 60 : 80;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'openai/gpt-4o',
       temperature: 0.9,
       max_tokens: maxTokens,
       messages: [
