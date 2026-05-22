@@ -26,21 +26,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing text' }, { status: 400 });
     }
 
-    const completion = await openai.chat.completions.create({
+    // gpt-audio on OpenRouter requires streaming for audio output.
+    const stream = await openai.chat.completions.create({
       model: 'openai/gpt-audio-mini',
       modalities: ['text', 'audio'],
       audio: { voice: resolveVoice(voice), format: 'mp3' },
+      stream: true,
       messages: [
         { role: 'system', content: 'You are a TTS engine. Speak the user message verbatim in a natural DJ delivery. Do not paraphrase, comment, or add anything.' },
         { role: 'user', content: text },
       ],
     });
 
-    const b64 = completion.choices?.[0]?.message?.audio?.data;
-    if (!b64) {
+    let audioB64 = '';
+    for await (const chunk of stream) {
+      const delta = chunk.choices?.[0]?.delta as { audio?: { data?: string } } | undefined;
+      if (delta?.audio?.data) audioB64 += delta.audio.data;
+    }
+
+    if (!audioB64) {
       return NextResponse.json({ error: 'No audio returned' }, { status: 502 });
     }
-    const buffer = Buffer.from(b64, 'base64');
+    const buffer = Buffer.from(audioB64, 'base64');
 
     return new Response(buffer, {
       headers: {
